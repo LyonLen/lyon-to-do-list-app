@@ -3,6 +3,7 @@ const { ipcRenderer } = require('electron');
 // DOM元素引用
 const ganttChart = document.getElementById('ganttChart');
 const closeBtn = document.getElementById('close-btn');
+const devToolsBtn = document.getElementById('dev-tools-btn'); // 开发者工具按钮
 const viewTabs = document.querySelectorAll('.view-tab');
 const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
@@ -199,6 +200,11 @@ function setupEventListeners() {
     // 关闭按钮
     closeBtn.addEventListener('click', () => {
         window.close();
+    });
+
+    // 开发者工具按钮
+    devToolsBtn.addEventListener('click', () => {
+        ipcRenderer.send('open-devtools');
     });
 
     // 视图切换

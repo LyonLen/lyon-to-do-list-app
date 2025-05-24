@@ -442,6 +442,20 @@
             border: 1px solid #e65100;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* 开发者提示样式 */
+        .developer-hint {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -450,12 +464,13 @@
         <div class="title-bar">
             <div class="title">任务甘特图</div>
             <div class="controls">
+                <button class="control-btn" id="dev-tools-btn" title="开发者工具">🔧</button>
                 <button class="control-btn" id="close-btn">×</button>
             </div>
         </div>
 
         <div class="content">
-            <!-- 视图选项卡 -->
+            <!-- 视图切换选项卡 -->
             <div class="view-tabs">
                 <button class="view-tab active" data-view="day">日视角</button>
                 <button class="view-tab" data-view="week">周视角</button>
@@ -486,10 +501,15 @@
             </div>
 
             <!-- 甘特图容器 -->
-            <div class="gantt-container">
+            <div class="gantt-container" id="ganttView">
                 <div class="gantt-chart" id="ganttChart">
                     <!-- 甘特图将在这里动态生成 -->
                 </div>
+            </div>
+
+            <!-- 统计视图容器 -->
+            <div class="stats-container" id="statsView" style="display: none;">
+                <!-- ... existing code ... -->
             </div>
         </div>
     </div>

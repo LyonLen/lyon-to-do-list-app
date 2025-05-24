@@ -1,5 +1,7 @@
 const { ipcRenderer } = require('electron');
 const { v4: uuidv4 } = require('uuid');
+// 添加axios用于API请求
+const axios = require('axios');
 
 // DOM Elements
 const taskList = document.getElementById('taskList');
@@ -13,12 +15,18 @@ const settingsBtn = document.getElementById('settings-btn');
 const contentArea = document.querySelector('.content'); // 获取内容区域元素
 const autocompleteContainer = document.getElementById('autocompleteContainer');
 const ganttBtn = document.getElementById('gantt-btn'); // 添加甘特图按钮引用
+const devToolsBtn = document.getElementById('dev-tools-btn'); // 开发者工具按钮引用
 
 // 自动补全相关变量
 let autocompleteItems = [];
 let selectedAutocompleteIndex = -1;
 let historicalTasks = [];
 let isAutocompleteVisible = false;
+// LLM推荐相关变量
+let llmSuggestions = [];
+let isLlmLoading = false;
+let llmRequestTimeout;
+const LLM_REQUEST_DELAY = 500; // 等待输入停止后的延迟时间(毫秒)
 
 // 修改音效实现方式
 // 使用Web Audio API生成完成音效
@@ -124,6 +132,12 @@ ganttBtn.addEventListener('click', () => {
     ipcRenderer.send('open-gantt');
 });
 
+// 开发者工具按钮点击事件
+devToolsBtn.addEventListener('click', () => {
+    // 发送打开开发者工具的消息
+    ipcRenderer.send('open-devtools');
+});
+
 // 移除添加按钮相关代码
 // addTaskBtn.addEventListener('click', () => {
 //     toggleTaskInput(true);
@@ -180,40 +194,104 @@ taskInput.addEventListener('input', () => {
 
 // 显示自动补全
 function showAutocomplete(inputValue) {
-    // 查找匹配的历史任务
-    const matches = findMatches(inputValue);
-
-    if (matches.length === 0) {
-        hideAutocomplete();
-        return;
+    // 清除之前的延迟请求
+    if (llmRequestTimeout) {
+        clearTimeout(llmRequestTimeout);
     }
 
-    // 显示匹配结果
-    renderAutocompleteItems(matches);
+    // 查找匹配的历史任务
+    const historyMatches = findMatches(inputValue);
 
-    // 确保DOM更新后再添加显示类
-    setTimeout(() => {
-        // 恢复显示和点击事件
-        autocompleteContainer.style.display = '';
-        autocompleteContainer.style.pointerEvents = 'auto';
+    // 判断是否应该使用LLM
+    ipcRenderer.invoke('get-settings').then(settings => {
+        const shouldUseLlm = settings.enableLlm && inputValue.length >= 3;
 
-        // 添加显示类
-        autocompleteContainer.classList.add('show');
-        isAutocompleteVisible = true;
+        if (shouldUseLlm) {
+            // 设置加载状态
+            isLlmLoading = true;
 
-        // 将自动补全容器移到文档最前面以避免层叠上下文问题
-        document.body.appendChild(autocompleteContainer);
+            // 先显示历史匹配结果
+            const combinedMatches = [...historyMatches];
+            if (isLlmLoading) {
+                combinedMatches.push({ title: '正在加载LLM推荐...', isLoading: true });
+            }
+            renderAutocompleteItems(combinedMatches);
 
-        // 调整位置，确保在输入框上方
-        positionAutocompleteContainer();
+            // 延迟发送LLM请求，避免频繁请求
+            llmRequestTimeout = setTimeout(async () => {
+                try {
+                    const suggestions = await getLlmSuggestions(inputValue);
+                    // 更新LLM建议并重新渲染
+                    llmSuggestions = Array.isArray(suggestions) ? suggestions.map(suggestion => ({
+                        title: String(suggestion || ''), // 确保建议是字符串
+                        isLlmSuggestion: true
+                    })) : [];
 
-        // 添加调试信息
-        console.log('显示自动补全容器:', matches.length + '个选项');
+                    // 过滤掉空建议
+                    llmSuggestions = llmSuggestions.filter(item => item.title && item.title.trim().length > 0);
 
-        // 默认选中第一项
-        selectedAutocompleteIndex = 0;
-        highlightSelectedItem();
-    }, 0);
+                    isLlmLoading = false;
+
+                    // 合并历史匹配和LLM建议
+                    const allMatches = [...historyMatches, ...llmSuggestions];
+                    if (allMatches.length === 0) {
+                        hideAutocomplete();
+                        return;
+                    }
+
+                    renderAutocompleteItems(allMatches);
+
+                    // 确保添加此行来强制重新定位容器
+                    positionAutocompleteContainer();
+                } catch (error) {
+                    console.error('获取LLM建议失败:', error);
+                    isLlmLoading = false;
+
+                    // 即使LLM失败，仍然显示历史匹配
+                    if (historyMatches.length > 0) {
+                        renderAutocompleteItems(historyMatches);
+                    } else {
+                        hideAutocomplete();
+                    }
+                }
+            }, LLM_REQUEST_DELAY);
+        } else {
+            // 如果未启用LLM或输入较短，只显示历史匹配
+            if (historyMatches.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            renderAutocompleteItems(historyMatches);
+        }
+
+        // 确保DOM更新后再添加显示类
+        setTimeout(() => {
+            // 恢复显示和点击事件
+            autocompleteContainer.style.display = '';
+            autocompleteContainer.style.pointerEvents = 'auto';
+
+            // 添加显示类
+            autocompleteContainer.classList.add('visible');
+            isAutocompleteVisible = true;
+
+            // 定位自动补全容器
+            positionAutocompleteContainer();
+
+            // 确保自动补全容器添加到body
+            if (autocompleteContainer.parentElement !== document.body) {
+                document.body.appendChild(autocompleteContainer);
+            }
+        }, 0);
+    }).catch(error => {
+        console.error('获取设置失败:', error);
+
+        // 出错时退回到只显示历史匹配
+        if (historyMatches.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+        renderAutocompleteItems(historyMatches);
+    });
 }
 
 // 高亮当前选中的项目
@@ -885,7 +963,7 @@ if (contentArea) {
 function hideAutocomplete() {
     if (!isAutocompleteVisible && autocompleteContainer.style.display === 'none') return; // 如果已经完全隐藏，不执行后续操作
 
-    autocompleteContainer.classList.remove('show');
+    autocompleteContainer.classList.remove('visible');
     // 设置为不接收鼠标事件
     autocompleteContainer.style.pointerEvents = 'none';
     // 设置display为none，彻底移除元素占位
@@ -919,8 +997,10 @@ function positionAutocompleteContainer() {
     autocompleteContainer.style.left = inputRect.left + 'px';
     autocompleteContainer.style.zIndex = '9999'; // 确保最高层级
 
-    // 调整底部位置，确保有足够空间显示所有项目
-    autocompleteContainer.style.bottom = (window.innerHeight - inputRect.top) + 'px';
+    // 修改这里：使用top而不是bottom，并向下偏移一点避开输入框
+    autocompleteContainer.style.top = (inputRect.bottom + 5) + 'px';
+    // 移除之前的bottom设置
+    autocompleteContainer.style.bottom = '';
 
     // 根据项目数量调整最大高度
     const itemCount = autocompleteItems.length;
@@ -935,90 +1015,67 @@ function positionAutocompleteContainer() {
 
 // 渲染自动补全选项
 function renderAutocompleteItems(items) {
+    // 清空容器
     autocompleteContainer.innerHTML = '';
-
-    // 添加提示信息
-    const hint = document.createElement('div');
-    hint.className = 'autocomplete-hint';
-    hint.textContent = '按 Tab 键自动补全 ↹';
-    autocompleteContainer.appendChild(hint);
-
-    // 保存当前的自动补全项
     autocompleteItems = items;
+    selectedAutocompleteIndex = -1;
 
-    // 如果没有匹配项但有输入内容，显示空状态
-    if (items.length === 0 && taskInput.value.trim()) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'autocomplete-empty';
-        emptyDiv.textContent = '没有匹配的任务';
-        autocompleteContainer.appendChild(emptyDiv);
-        return;
-    }
+    // 设置数据属性，方便调试
+    autocompleteContainer.dataset.itemCount = items.length;
 
-    // 确保selectedAutocompleteIndex在有效范围内
-    if (selectedAutocompleteIndex < 0 || selectedAutocompleteIndex >= items.length) {
-        selectedAutocompleteIndex = 0;
-    }
-
+    // 创建并添加项目
     items.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'autocomplete-item';
+        const element = document.createElement('div');
+        element.className = 'autocomplete-item';
+        element.dataset.index = index;
 
-        // 只有当前选中的项添加selected类
-        if (index === selectedAutocompleteIndex) {
-            div.classList.add('selected');
+        if (item.isLoading) {
+            // 加载中状态
+            element.classList.add('loading-item');
+            element.innerHTML = `<span>${item.title}</span><div class="loading-spinner"></div>`;
+        } else if (item.isLlmSuggestion) {
+            // LLM推荐项目
+            element.classList.add('llm-suggestion');
+            element.innerHTML = `
+                <span class="llm-icon">🤖</span>
+                <span class="suggestion-text">${item.title}</span>
+            `;
+        } else {
+            // 普通历史项目
+            element.innerHTML = `<span>${item.title}</span>`;
         }
 
-        div.dataset.index = index;
-
-        // AI建议项标记 - 只添加视觉标记，不添加选中状态
-        if (item.isAISuggestion) {
-            div.classList.add('ai-suggestion');
-        }
-
-        // 添加优先级标识
-        const prioritySpan = document.createElement('span');
-        prioritySpan.className = `autocomplete-priority ${item.priority.toLowerCase()}`;
-        div.appendChild(prioritySpan);
-
-        // 添加任务标题
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'autocomplete-title'; // 添加类名以便于样式设置
-        titleSpan.textContent = item.title;
-        div.appendChild(titleSpan);
-
-        // 如果是AI建议，添加AI标签
-        if (item.isAISuggestion) {
-            const aiTag = document.createElement('span');
-            aiTag.className = 'ai-tag';
-            aiTag.textContent = 'AI';
-            div.appendChild(aiTag);
-        }
-
-        // 添加标签信息（如果有）
-        if (item.tags && item.tags.length > 0) {
-            const tagsSpan = document.createElement('span');
-            tagsSpan.className = 'autocomplete-tags';
-            tagsSpan.textContent = item.tags.map(tag => `#${tag}`).join(' ');
-            div.appendChild(tagsSpan);
-        }
-
-        // 为推荐项添加点击事件处理逻辑
-        div.addEventListener('click', (event) => {
-            // 阻止事件冒泡，避免触发document上的点击事件
-            event.stopPropagation();
-            // 点击推荐项后手动关闭推荐列表
+        // 添加点击事件
+        element.addEventListener('click', () => {
+            taskInput.value = item.title;
             hideAutocomplete();
+            forceInputFocus();
         });
 
-        // 特别处理标题部分，阻止冒泡
-        titleSpan.addEventListener('click', (event) => {
-            event.stopPropagation();
-            hideAutocomplete();
+        // 添加鼠标移入事件
+        element.addEventListener('mouseenter', () => {
+            selectedAutocompleteIndex = index;
+            highlightSelectedItem();
         });
 
-        autocompleteContainer.appendChild(div);
+        autocompleteContainer.appendChild(element);
     });
+
+    // 如果自动补全容器现在有内容，则显示它
+    if (items.length > 0) {
+        autocompleteContainer.style.display = '';
+        autocompleteContainer.style.pointerEvents = 'auto';
+        isAutocompleteVisible = true;
+    } else {
+        autocompleteContainer.style.display = 'none';
+        autocompleteContainer.style.pointerEvents = 'none';
+        isAutocompleteVisible = false;
+    }
+
+    // 添加调试信息
+    console.log('渲染了', items.length, '个自动补全项目:',
+        '容器状态:', autocompleteContainer.style.display,
+        '可见状态:', isAutocompleteVisible);
 }
 
 // 加载历史任务数据用于自动补全
@@ -1235,4 +1292,301 @@ window.addEventListener('focus', () => {
         resetInputState();
         forceInputFocus();
     }, 50);
+});
+
+/**
+ * 从LLM获取任务建议
+ * @param {string} inputText 用户输入的文本
+ * @returns {Promise<string[]>} 建议列表
+ */
+async function getLlmSuggestions(inputText) {
+    try {
+        // 从设置中获取API密钥和URL
+        const settings = await ipcRenderer.invoke('get-settings');
+
+        // 检查是否启用了LLM
+        if (!settings.enableLlm) {
+            return [];
+        }
+
+        const apiKey = settings.llmApiKey;
+        const apiUrl = settings.llmApiUrl || 'https://api.openai.com/v1/chat/completions';
+
+        if (!apiKey) {
+            console.warn('未配置LLM API密钥，无法获取建议');
+            return [];
+        }
+
+        // 根据API URL确定请求格式
+        let requestData = {};
+
+        // 检测百炼API
+        const isBailianAPI = apiUrl.includes('dashscope.aliyuncs.com/compatible-mode') ||
+            apiUrl.includes('dashscope.aliyuncs.com/v1/chat/completions');
+
+        // 如果不是百炼API，强制使用百炼API格式
+        if (!isBailianAPI) {
+            console.warn('不是百炼API，已自动切换为百炼API格式');
+        }
+
+        // task.priority 是英文，需要转换为中文
+        const chinesePriority = {
+            'Urgent': '紧急',
+            'High': '高',
+            'Medium': '中',
+            'Low': '低'
+        };
+        const historicalTitles = historicalTasks.map(task => `[${chinesePriority[task.priority]}] ${task.title}`).join('\n\n');
+
+        // 通用消息
+        const systemMessage = {
+            role: 'system',
+            content: settings.systemPrompt || `根据示例输出，产出一个相似的标题，不要输出额外的内容，和奇怪的格式，只要补全用户的任务标题输入。`
+        };
+
+        const userMessage = {
+            role: 'user',
+            content: `${inputText}"`
+        };
+
+        // 设置百炼API请求格式
+        requestData = {
+            model: settings.llmModel || 'qwen-plus',
+            messages: [systemMessage, userMessage],
+            temperature: 0.2,
+            max_tokens: 30,
+            examples: [
+                {
+                    input: `# 历史任务\n\n${historicalTitles}\n\n#用户输入\n前\n\n`,
+                    output: `[中] 前端开发需求`
+                },
+                {
+                    input: `# 历史任务\n\n${historicalTitles}\n\n#用户输入\n前端\n\n`,
+                    output: `[中] 前端开发需求`
+                },
+                {
+                    input: `# 历史任务\n\n${historicalTitles}\n\n#用户输入\n外网缺\n\n`,
+                    output: `[紧急] 外网缺陷修复`
+                },
+                {
+                    input: `# 历史任务\n\n${historicalTitles}\n\n#用户输入\n外网\n\n`,
+                    output: `[紧急] 外网缺陷修复`
+                }
+            ]
+        };
+
+        // 合并任何额外的API参数
+        if (settings.apiExtraParams && typeof settings.apiExtraParams === 'object') {
+            requestData = { ...requestData, ...settings.apiExtraParams };
+        }
+
+        // 设置百炼API认证
+        let headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        };
+
+        // 添加用户设置的额外请求头
+        if (settings.extraHeaders && typeof settings.extraHeaders === 'object') {
+            headers = { ...headers, ...settings.extraHeaders };
+        }
+
+        // 打印完整请求数据（不包含API密钥）以便调试
+        console.log('LLM API请求数据:', {
+            apiType: '阿里云百炼',
+            url: apiUrl,
+            ...requestData
+        });
+
+        // 发送请求
+        const response = await axios.post(apiUrl, requestData, {
+            headers: headers,
+            timeout: 10000 // 10秒超时
+        });
+
+        // 调试日志
+        console.log('LLM API响应状态:', response.status);
+
+        // 增强错误处理
+        if (!response || !response.data) {
+            console.error('LLM API返回空响应');
+            return [];
+        }
+
+        // 检查API状态码
+        if (response.status !== 200) {
+            console.error(`LLM API返回错误状态码: ${response.status}`);
+            return [];
+        }
+
+        // 检查是否有错误响应
+        if (response.data.error) {
+            console.error('API返回错误:', response.data.error);
+
+            // 检查是否是消息格式问题
+            if (response.data.error.message &&
+                (response.data.error.message.includes('messages') ||
+                    response.data.error.message.includes('format'))) {
+
+                console.log('检测到可能是消息格式问题，尝试兼容模式...');
+
+                // 尝试使用兼容模式重新请求
+                try {
+                    // 构建简化请求
+                    const compatRequestData = {
+                        model: settings.llmModel || 'qwen-plus',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '根据示例输出，产出一个相似的标题，不要输出额外的内容。'
+                            },
+                            {
+                                role: 'user',
+                                content: `${inputText}`
+                            }
+                        ],
+                        temperature: 0.2,
+                        max_tokens: 30,
+                        examples: [
+                            {
+                                input: `# 历史任务\n\n${historicalTitles}#用户输入\n\n${inputText}\n\n`,
+                                output: `[中] ${inputText}`
+                            }
+                        ]
+                    };
+
+                    console.log('使用兼容模式重新请求:', compatRequestData);
+
+                    // 发送兼容模式请求
+                    const compatResponse = await axios.post(apiUrl, compatRequestData, {
+                        headers: headers,
+                        timeout: 10000
+                    });
+
+                    // 如果兼容模式请求成功，使用兼容模式响应
+                    if (compatResponse && compatResponse.status === 200) {
+                        console.log('兼容模式请求成功');
+                        response.data = compatResponse.data;
+                    }
+                } catch (compatError) {
+                    console.error('兼容模式请求失败:', compatError);
+                    // 继续使用原始响应
+                }
+            }
+        }
+
+        // 根据API类型解析响应
+        let responseText = '';
+
+        try {
+            // 处理百炼API响应格式
+            if (response.data.choices &&
+                Array.isArray(response.data.choices) &&
+                response.data.choices.length > 0 &&
+                response.data.choices[0].message &&
+                response.data.choices[0].message.content) {
+                responseText = response.data.choices[0].message.content;
+            } else {
+                // 尝试其他可能的响应格式
+                if (typeof response.data === 'string') {
+                    responseText = response.data;
+                } else if (response.data.output && response.data.output.text) {
+                    responseText = response.data.output.text;
+                } else if (response.data.text) {
+                    responseText = response.data.text;
+                } else if (response.data.result) {
+                    responseText = response.data.result;
+                }
+            }
+
+            // 记录提取到的响应文本
+            console.log('提取到的响应文本:', responseText);
+
+            if (!responseText) {
+                console.error('无法从响应中提取文本内容');
+                console.log('完整响应数据:', JSON.stringify(response.data));
+                return [];
+            }
+
+            // 直接使用文本响应，按行分割获取建议
+            let suggestions = [];
+
+            try {
+                // 按行分割文本
+                suggestions = responseText.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .slice(0, 5); // 最多取5个建议
+
+                // 如果没有足够的行，尝试按其他方式分割
+                if (suggestions.length === 0) {
+                    // 尝试按句号分割
+                    suggestions = responseText.split('。')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        .slice(0, 5);
+                }
+
+                // 如果仍然没有建议，可能是整个文本作为一个建议
+                if (suggestions.length === 0 && responseText.trim()) {
+                    suggestions = [responseText.trim()];
+                }
+
+                // 清理建议文本（移除可能的序号前缀如1.、2.等）
+                suggestions = suggestions.map(s => {
+                    // 移除序号前缀
+                    return s.replace(/^\d+[\.\)、]\s*/, '').trim();
+                });
+
+                // 过滤掉空建议
+                suggestions = suggestions.filter(s => s && s.trim().length > 0);
+
+                // 限制建议数量
+                suggestions = suggestions.slice(0, 5);
+
+                console.log('处理后的建议列表:', suggestions);
+                return suggestions;
+            } catch (error) {
+                console.error('处理响应文本时出错:', error);
+                // 如果处理出错但有原始文本，返回原始文本
+                if (responseText.trim()) {
+                    return [responseText.trim()];
+                }
+                return [];
+            }
+        } catch (error) {
+            console.error('处理LLM响应时出错:', error);
+            return [];
+        }
+    } catch (error) {
+        console.error('LLM API请求失败:', error);
+        return [];
+    }
+}
+
+// 调试辅助函数
+function debugLlmState() {
+    ipcRenderer.invoke('get-settings').then(settings => {
+        console.log('=== LLM 状态检查 ===');
+        console.log('LLM 功能启用状态:', settings.enableLlm ? '已启用' : '未启用');
+        console.log('API 密钥:', settings.llmApiKey ? '已设置' : '未设置');
+        console.log('API 端点:', settings.llmApiUrl);
+        console.log('选择的模型:', settings.llmModel);
+        console.log('当前自动补全容器状态:', isAutocompleteVisible ? '可见' : '隐藏');
+        console.log('自动补全项目数:', autocompleteItems.length);
+        console.log('历史任务数:', historicalTasks.length);
+        console.log('LLM建议数:', llmSuggestions.length);
+        console.log('LLM加载状态:', isLlmLoading ? '加载中' : '空闲');
+        console.log('============================');
+    }).catch(err => {
+        console.error('获取LLM状态失败:', err);
+    });
+}
+
+// 在文档加载完成后添加一个键盘快捷键来触发调试信息
+document.addEventListener('keydown', (e) => {
+    // 按下Ctrl+Alt+D显示调试信息
+    if (e.ctrlKey && e.altKey && e.code === 'KeyD') {
+        debugLlmState();
+    }
 }); 

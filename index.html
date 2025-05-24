@@ -20,7 +20,6 @@
             background-color: rgba(30, 34, 42, 0.9);
             color: #f8f8f8;
             user-select: none;
-            -webkit-app-region: drag;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
             border-radius: 12px;
         }
@@ -41,12 +40,14 @@
             padding: 8px 12px;
             background-color: transparent;
             position: relative;
-            z-index: 2;
+            z-index: 1000;
+            -webkit-app-region: drag;
         }
 
         .title {
             font-size: 14px;
             font-weight: 600;
+            -webkit-app-region: drag;
         }
 
         .controls {
@@ -55,6 +56,8 @@
             -webkit-app-region: no-drag;
             height: 24px;
             align-items: center;
+            position: relative;
+            z-index: 1001;
         }
 
         .control-btn {
@@ -72,7 +75,7 @@
             line-height: 1;
             padding: 0;
             position: relative;
-            z-index: 10;
+            z-index: 1002;
         }
 
         #close-btn {
@@ -235,7 +238,7 @@
             border-top: 1px solid rgba(255, 255, 255, 0.2);
             display: block;
             -webkit-app-region: no-drag;
-            z-index: 1000;
+            z-index: 999;
             box-sizing: border-box;
             width: 100%;
             pointer-events: auto;
@@ -301,14 +304,10 @@
             color: #bbb;
             background-color: rgba(25, 28, 35, 0.85);
             border-radius: 4px;
-            z-index: 9999;
-            /* 增加z-index确保能接收点击事件 */
+            z-index: 990;
             position: relative;
-            /* 确保z-index生效 */
             cursor: pointer;
-            /* 添加指针样式提示可点击 */
             pointer-events: auto;
-            /* 确保可以接收鼠标事件 */
         }
 
         .priority-item {
@@ -316,9 +315,7 @@
             align-items: center;
             gap: 4px;
             pointer-events: auto;
-            /* 确保可以接收鼠标事件 */
-            z-index: 10000;
-            /* 确保能在自动补全之上 */
+            z-index: 991;
         }
 
         .priority-color {
@@ -612,6 +609,89 @@
             gap: 4px;
             margin-bottom: 2px;
         }
+
+        /* 自动补全样式 */
+        #autocompleteContainer {
+            position: fixed;
+            background-color: rgba(35, 39, 47, 0.98);
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            z-index: 1000;
+            display: none;
+            transition: opacity 0.2s, transform 0.2s;
+            opacity: 0;
+            transform: translateY(5px);
+            pointer-events: none;
+            margin-top: 5px;
+        }
+
+        #autocompleteContainer.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .autocomplete-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .autocomplete-item.selected {
+            background-color: rgba(33, 150, 243, 0.3);
+        }
+
+        /* LLM推荐样式 */
+        .autocomplete-item.llm-suggestion {
+            background-color: rgba(45, 50, 60, 0.95);
+        }
+
+        .autocomplete-item.llm-suggestion:hover {
+            background-color: rgba(50, 55, 65, 0.95);
+        }
+
+        .llm-icon {
+            margin-right: 8px;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .suggestion-text {
+            flex: 1;
+        }
+
+        /* 加载状态样式 */
+        .autocomplete-item.loading-item {
+            justify-content: space-between;
+            color: #aaa;
+            font-style: italic;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
@@ -621,6 +701,7 @@
             <div class="title">Lyon Task List</div>
             <div class="controls">
                 <button class="control-btn" id="gantt-btn" title="甘特图">📊</button>
+                <button class="control-btn" id="dev-tools-btn" title="开发者工具">🔧</button>
                 <button class="control-btn" id="settings-btn">⚙</button>
                 <button class="control-btn" id="minimize-btn">-</button>
                 <button class="control-btn" id="close-btn">×</button>

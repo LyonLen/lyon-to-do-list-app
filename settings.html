@@ -183,6 +183,30 @@
             color: #aaa;
             border: 1px solid #555;
         }
+
+        .text-input {
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: rgba(50, 54, 62, 0.7);
+            color: #f8f8f8;
+        }
+
+        .select-input {
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: rgba(50, 54, 62, 0.7);
+            color: #f8f8f8;
+        }
+
+        .developer-hint {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -191,6 +215,7 @@
         <div class="title-bar">
             <div class="title">设置</div>
             <div class="controls">
+                <button class="control-btn" id="dev-tools-btn" title="开发者工具">🔧</button>
                 <button class="control-btn" id="close-btn">×</button>
             </div>
         </div>
@@ -229,6 +254,67 @@
                         <input type="checkbox" id="edgeDetection">
                         <span class="slider"></span>
                     </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h2>LLM智能推荐</h2>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">启用LLM智能推荐</div>
+                        <div class="setting-description">使用大型语言模型为任务输入提供智能推荐</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableLlm">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">API密钥</div>
+                        <div class="setting-description">输入您的OpenAI API密钥或其他兼容的LLM服务密钥</div>
+                    </div>
+                    <div>
+                        <input type="password" id="llmApiKey" class="text-input" placeholder="sk-...">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">API端点</div>
+                        <div class="setting-description">阿里云百炼API端点</div>
+                    </div>
+                    <div>
+                        <input type="text" id="llmApiUrl" class="text-input"
+                            placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">LLM模型</div>
+                        <div class="setting-description">选择要使用的模型</div>
+                    </div>
+                    <div>
+                        <select id="llmModel" class="select-input">
+                            <option value="qwen-plus">阿里云百炼 (Qwen Plus)</option>
+                            <option value="qwen-max">阿里云百炼 (Qwen Max)</option>
+                            <option value="qwen-turbo">阿里云百炼 (Qwen Turbo)</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="customModelContainer" style="display: none;">
+                    <div>
+                        <div class="setting-label">自定义模型名称</div>
+                        <div class="setting-description">输入自定义模型的完整名称</div>
+                    </div>
+                    <div>
+                        <input type="text" id="customModelName" class="text-input" placeholder="model-name">
+                    </div>
                 </div>
             </div>
 

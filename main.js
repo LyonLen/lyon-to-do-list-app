@@ -14,7 +14,12 @@ const store = new Store({
             alwaysOnTop: true,
             showCompletionAnimation: true,
             playCompletionSound: true,
-            edgeDetection: true
+            edgeDetection: true,
+            // LLM相关设置
+            enableLlm: false,
+            llmApiKey: '',
+            llmApiUrl: 'https://api.openai.com/v1/chat/completions',
+            llmModel: 'gpt-3.5-turbo'
         }
     }
 });
@@ -126,7 +131,8 @@ if (!gotTheLock) {
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
-                enableRemoteModule: true
+                enableRemoteModule: true,
+                devTools: true
             },
             hasShadow: true,
             roundedCorners: true
@@ -219,6 +225,37 @@ if (!gotTheLock) {
             } else {
                 mainWindow.show();
                 mainWindow.focus();
+            }
+        });
+
+        // 添加F12打开开发者工具的快捷键
+        globalShortcut.register('F12', () => {
+            // 获取当前聚焦的窗口
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow) {
+                // 如果开发者工具已打开，则关闭；否则打开
+                if (focusedWindow.webContents.isDevToolsOpened()) {
+                    focusedWindow.webContents.closeDevTools();
+                } else {
+                    focusedWindow.webContents.openDevTools();
+                }
+            } else if (mainWindow && !mainWindow.isDestroyed()) {
+                // 如果没有聚焦的窗口，则默认对主窗口操作
+                if (mainWindow.webContents.isDevToolsOpened()) {
+                    mainWindow.webContents.closeDevTools();
+                } else {
+                    mainWindow.webContents.openDevTools();
+                }
+            }
+        });
+
+        // 添加备用快捷键 Ctrl+Shift+I 打开开发者工具
+        globalShortcut.register('CommandOrControl+Shift+I', () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow) {
+                focusedWindow.webContents.openDevTools();
+            } else if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.openDevTools();
             }
         });
     }
@@ -429,9 +466,22 @@ if (!gotTheLock) {
         });
 
         // Update settings
-        ipcMain.handle('update-settings', (event, settings) => {
-            store.set('settings', settings);
-            return settings;
+        ipcMain.handle('update-settings', (event, newSettings) => {
+            // 保存旧设置以便检查更改
+            const oldSettings = store.get('settings');
+
+            // 合并新设置，确保保留任何未提供的设置值
+            const mergedSettings = { ...oldSettings, ...newSettings };
+
+            // 保存新设置
+            store.set('settings', mergedSettings);
+
+            // 如果总是置顶设置发生变化，更新窗口
+            if (oldSettings.alwaysOnTop !== mergedSettings.alwaysOnTop && mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.setAlwaysOnTop(mergedSettings.alwaysOnTop);
+            }
+
+            return true;
         });
 
         // Minimize window
@@ -539,6 +589,16 @@ if (!gotTheLock) {
         // 打开甘特图窗口
         ipcMain.on('open-gantt', () => {
             createGanttWindow();
+        });
+
+        // 打开开发者工具
+        ipcMain.on('open-devtools', () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow) {
+                focusedWindow.webContents.openDevTools();
+            } else if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.openDevTools();
+            }
         });
 
         // 获取所有任务数据（包括历史和当前）用于甘特图
