@@ -105,6 +105,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
     }
+
+    // 让输入框在页面加载后自动获得焦点
+    setTimeout(() => {
+        // 让输入框获得焦点
+        taskInput.focus();
+    }, 200);
 });
 
 // IPC Event listeners
@@ -185,36 +191,84 @@ taskInput.addEventListener('input', () => {
     const inputValue = taskInput.value.trim();
 
     if (inputValue.length >= 1) {
-        // 最少输入1个字符才开始补全
+        // 最少输入1个字符就开始补全
         showAutocomplete(inputValue);
     } else {
         hideAutocomplete();
     }
 });
 
+// 确保任务输入框获得焦点时就显示推荐
+taskInput.addEventListener('focus', () => {
+    console.log('输入框获得焦点');
+    const inputValue = taskInput.value.trim();
+
+    // 强制将自动补全容器添加到body，确保它可以正确定位
+    if (autocompleteContainer.parentElement !== document.body) {
+        document.body.appendChild(autocompleteContainer);
+        console.log('已将自动补全容器添加到body');
+    }
+
+    if (inputValue.length >= 1) {
+        console.log('输入框内容非空，显示推荐');
+        showAutocomplete(inputValue);
+    } else {
+        // 即使输入为空，也生成默认推荐
+        console.log('输入框内容为空，显示默认推荐');
+        const defaultSuggestions = [
+            { title: '修复问题', priority: 'Medium' },
+            { title: '开发功能', priority: 'Medium' },
+            { title: '准备会议', priority: 'Medium' }
+        ];
+        renderAutocompleteItems(defaultSuggestions);
+
+        // 强制显示推荐弹窗
+        autocompleteContainer.style.display = 'block';
+        autocompleteContainer.style.pointerEvents = 'auto';
+        autocompleteContainer.classList.add('visible');
+        isAutocompleteVisible = true;
+
+        // 定位推荐弹窗
+        positionAutocompleteContainer();
+    }
+});
+
 // 显示自动补全
 function showAutocomplete(inputValue) {
+    console.log('开始显示自动补全, 输入值:', inputValue);
+
     // 清除之前的延迟请求
     if (llmRequestTimeout) {
         clearTimeout(llmRequestTimeout);
     }
 
+    // 确保自动补全容器添加到body，避免定位问题
+    if (autocompleteContainer.parentElement !== document.body) {
+        document.body.appendChild(autocompleteContainer);
+        console.log('已将自动补全容器添加到body');
+    }
+
     // 查找匹配的历史任务
     const historyMatches = findMatches(inputValue);
+    console.log('找到历史匹配:', historyMatches.length);
 
     // 判断是否应该使用LLM
     ipcRenderer.invoke('get-settings').then(settings => {
-        const shouldUseLlm = settings.enableLlm && inputValue.length >= 3;
+        const shouldUseLlm = settings.enableLlm && inputValue.length >= 1; // 降低触发门槛为1个字符
+        console.log('是否使用LLM:', shouldUseLlm);
 
         if (shouldUseLlm) {
             // 设置加载状态
             isLlmLoading = true;
 
-            // 先显示历史匹配结果
-            const combinedMatches = [...historyMatches];
+            // 先显示历史匹配结果，但将加载提示放在第一位
+            const combinedMatches = [];
             if (isLlmLoading) {
-                combinedMatches.push({ title: '正在加载LLM推荐...', isLoading: true });
+                combinedMatches.push({ title: 'AI推荐任务信息', isLoading: true });
             }
+            // 然后添加历史匹配
+            combinedMatches.push(...historyMatches.slice(0, 2)); // 最多添加2个历史匹配
+
             renderAutocompleteItems(combinedMatches);
 
             // 延迟发送LLM请求，避免频繁请求
@@ -232,8 +286,26 @@ function showAutocomplete(inputValue) {
 
                     isLlmLoading = false;
 
-                    // 合并历史匹配和LLM建议
-                    const allMatches = [...historyMatches, ...llmSuggestions];
+                    // 重新组织匹配结果，确保LLM建议显示在第一位
+                    let allMatches = [];
+
+                    // 首先添加LLM建议
+                    if (llmSuggestions.length > 0) {
+                        allMatches.push(llmSuggestions[0]); // 第一个LLM建议总是显示在第一位
+                    }
+
+                    // 然后添加历史匹配，保证总共最多显示3个
+                    const remainingSlots = 3 - allMatches.length;
+                    if (remainingSlots > 0 && historyMatches.length > 0) {
+                        allMatches.push(...historyMatches.slice(0, remainingSlots));
+                    }
+
+                    // 如果还有空位，添加更多LLM建议
+                    const moreSlots = 3 - allMatches.length;
+                    if (moreSlots > 0 && llmSuggestions.length > 1) {
+                        allMatches.push(...llmSuggestions.slice(1, 1 + moreSlots));
+                    }
+
                     if (allMatches.length === 0) {
                         hideAutocomplete();
                         return;
@@ -256,18 +328,41 @@ function showAutocomplete(inputValue) {
                 }
             }, LLM_REQUEST_DELAY);
         } else {
-            // 如果未启用LLM或输入较短，只显示历史匹配
-            if (historyMatches.length === 0) {
+            // 如果未启用LLM，显示历史匹配加上常见任务建议
+            let combinedMatches = [];
+
+            // 生成一些AI建议并放在第一位
+            const aiSuggestions = generateSuggestions(inputValue);
+            if (aiSuggestions.length > 0) {
+                combinedMatches.push(aiSuggestions[0]); // 第一个AI建议显示在第一位
+            }
+
+            // 添加历史匹配
+            const remainingSlots = 3 - combinedMatches.length;
+            if (remainingSlots > 0 && historyMatches.length > 0) {
+                combinedMatches.push(...historyMatches.slice(0, remainingSlots));
+            }
+
+            // 如果还有空位，添加更多AI建议
+            const moreSlots = 3 - combinedMatches.length;
+            if (moreSlots > 0 && aiSuggestions.length > 1) {
+                combinedMatches.push(...aiSuggestions.slice(1, 1 + moreSlots));
+            }
+
+            if (combinedMatches.length === 0) {
                 hideAutocomplete();
                 return;
             }
-            renderAutocompleteItems(historyMatches);
+
+            renderAutocompleteItems(combinedMatches);
         }
 
         // 确保DOM更新后再添加显示类
         setTimeout(() => {
-            // 恢复显示和点击事件
-            autocompleteContainer.style.display = '';
+            console.log('准备显示自动补全容器');
+
+            // 强制设置显示
+            autocompleteContainer.style.display = 'block';
             autocompleteContainer.style.pointerEvents = 'auto';
 
             // 添加显示类
@@ -276,11 +371,6 @@ function showAutocomplete(inputValue) {
 
             // 定位自动补全容器
             positionAutocompleteContainer();
-
-            // 确保自动补全容器添加到body
-            if (autocompleteContainer.parentElement !== document.body) {
-                document.body.appendChild(autocompleteContainer);
-            }
         }, 0);
     }).catch(error => {
         console.error('获取设置失败:', error);
@@ -343,10 +433,15 @@ function applySelectedAutocompletion() {
     if (selectedAutocompleteIndex >= 0 && selectedAutocompleteIndex < autocompleteItems.length) {
         const selectedTask = autocompleteItems[selectedAutocompleteIndex];
 
-        // 构建完整的任务输入，包括优先级、标题、标签等
+        // 检查是否为加载中状态，如果是则不执行任何操作
+        if (selectedTask.isLoading) {
+            return;
+        }
+
+        // 构建完整的任务输入，包括优先级、标题等
         let inputValue = '';
 
-        // 添加优先级
+        // 添加优先级（如果存在）
         const priorityMap = {
             'Urgent': '紧急',
             'High': '高',
@@ -361,12 +456,12 @@ function applySelectedAutocompletion() {
         // 添加标题
         inputValue += selectedTask.title;
 
-        // 添加预估时间
+        // 添加预估时间（如果存在）
         if (selectedTask.estimatedTime) {
             inputValue += ` @${selectedTask.estimatedTime}`;
         }
 
-        // 添加标签
+        // 添加标签（如果存在）
         if (selectedTask.tags && selectedTask.tags.length > 0) {
             inputValue += ' ' + selectedTask.tags.map(tag => `#${tag}`).join(' ');
         }
@@ -374,6 +469,9 @@ function applySelectedAutocompletion() {
         // 设置输入框的值
         taskInput.value = inputValue;
         taskInput.focus();
+
+        // 提示用户已应用推荐
+        console.log('已应用推荐:', inputValue);
 
         // 隐藏自动补全
         hideAutocomplete();
@@ -972,17 +1070,11 @@ function hideAutocomplete() {
     isAutocompleteVisible = false;
     selectedAutocompleteIndex = -1;
 
-    // 将自动补全容器放回原位
-    const inputWrapper = document.querySelector('.input-wrapper');
-    if (inputWrapper && autocompleteContainer.parentElement === document.body) {
-        inputWrapper.appendChild(autocompleteContainer);
-    }
+    console.log('隐藏自动补全容器');
 
     // 确保输入框可以正常交互
     taskInput.style.pointerEvents = 'auto';
     taskInputContainer.style.pointerEvents = 'auto';
-
-    console.log('彻底隐藏自动补全容器，并恢复输入框交互');
 }
 
 // 调整自动补全容器位置
@@ -997,49 +1089,61 @@ function positionAutocompleteContainer() {
     autocompleteContainer.style.left = inputRect.left + 'px';
     autocompleteContainer.style.zIndex = '9999'; // 确保最高层级
 
-    // 修改这里：使用top而不是bottom，并向下偏移一点避开输入框
-    autocompleteContainer.style.top = (inputRect.bottom + 5) + 'px';
-    // 移除之前的bottom设置
-    autocompleteContainer.style.bottom = '';
+    // 在输入框上方显示
+    autocompleteContainer.style.bottom = (window.innerHeight - inputRect.top + 5) + 'px';
+    autocompleteContainer.style.top = 'auto'; // 移除顶部定位
+    autocompleteContainer.style.maxHeight = '300px'; // 设置固定最大高度
 
-    // 根据项目数量调整最大高度
-    const itemCount = autocompleteItems.length;
-    if (itemCount > 0) {
-        // 每项高度大约38px，加上提示信息高度30px，再加一些额外空间
-        const estimatedHeight = (itemCount * 38) + 30 + 10;
-        autocompleteContainer.style.maxHeight = estimatedHeight + 'px';
-    }
-
-    console.log('自动补全容器位置已调整，项目数量:', autocompleteItems.length);
+    console.log('自动补全容器位置已调整(上方显示):',
+        '位置=', inputRect.left, (window.innerHeight - inputRect.top + 5),
+        '尺寸=', inputRect.width,
+        '项目数量=', autocompleteItems.length);
 }
 
 // 渲染自动补全选项
 function renderAutocompleteItems(items) {
     // 清空容器
     autocompleteContainer.innerHTML = '';
-    autocompleteItems = items;
+
+    // 确保最多只显示3个项目
+    autocompleteItems = items.slice(0, 3);
     selectedAutocompleteIndex = -1;
 
+    console.log('渲染自动补全项目:', autocompleteItems.length);
+
     // 设置数据属性，方便调试
-    autocompleteContainer.dataset.itemCount = items.length;
+    autocompleteContainer.dataset.itemCount = autocompleteItems.length;
 
     // 创建并添加项目
-    items.forEach((item, index) => {
+    autocompleteItems.forEach((item, index) => {
         const element = document.createElement('div');
         element.className = 'autocomplete-item';
         element.dataset.index = index;
 
         if (item.isLoading) {
-            // 加载中状态
+            // 加载中状态 - 使用红色背景突出显示第一项
             element.classList.add('loading-item');
-            element.innerHTML = `<span>${item.title}</span><div class="loading-spinner"></div>`;
+            if (index === 0) {
+                element.classList.add('first-item');
+                element.innerHTML = `<span class="ai-suggestion-title">${item.title}</span><div class="loading-spinner"></div>`;
+            } else {
+                element.innerHTML = `<span>${item.title}</span><div class="loading-spinner"></div>`;
+            }
         } else if (item.isLlmSuggestion) {
-            // LLM推荐项目
+            // LLM推荐项目 - 第一个LLM推荐使用红色背景
             element.classList.add('llm-suggestion');
-            element.innerHTML = `
-                <span class="llm-icon">🤖</span>
-                <span class="suggestion-text">${item.title}</span>
-            `;
+            if (index === 0) {
+                element.classList.add('first-item');
+                element.innerHTML = `
+                    <span class="llm-icon">🤖</span>
+                    <span class="ai-suggestion-title">${item.title}</span>
+                `;
+            } else {
+                element.innerHTML = `
+                    <span class="llm-icon">🤖</span>
+                    <span class="suggestion-text">${item.title}</span>
+                `;
+            }
         } else {
             // 普通历史项目
             element.innerHTML = `<span>${item.title}</span>`;
@@ -1047,9 +1151,9 @@ function renderAutocompleteItems(items) {
 
         // 添加点击事件
         element.addEventListener('click', () => {
-            taskInput.value = item.title;
-            hideAutocomplete();
-            forceInputFocus();
+            console.log('点击了推荐项:', item.title);
+            selectedAutocompleteIndex = index;
+            applySelectedAutocompletion();
         });
 
         // 添加鼠标移入事件
@@ -1062,20 +1166,21 @@ function renderAutocompleteItems(items) {
     });
 
     // 如果自动补全容器现在有内容，则显示它
-    if (items.length > 0) {
-        autocompleteContainer.style.display = '';
+    if (autocompleteItems.length > 0) {
+        console.log('有自动补全项目，显示容器');
+        autocompleteContainer.style.display = 'block';
         autocompleteContainer.style.pointerEvents = 'auto';
         isAutocompleteVisible = true;
+
+        // 默认选中第一项
+        selectedAutocompleteIndex = 0;
+        highlightSelectedItem();
     } else {
+        console.log('没有自动补全项目，隐藏容器');
         autocompleteContainer.style.display = 'none';
         autocompleteContainer.style.pointerEvents = 'none';
         isAutocompleteVisible = false;
     }
-
-    // 添加调试信息
-    console.log('渲染了', items.length, '个自动补全项目:',
-        '容器状态:', autocompleteContainer.style.display,
-        '可见状态:', isAutocompleteVisible);
 }
 
 // 加载历史任务数据用于自动补全
@@ -1156,78 +1261,92 @@ function findMatches(inputText) {
                 return { task, score };
             })
             .filter(item => item.score > 0) // 只保留有分数的匹配项
-            .sort((a, b) => b.score - a.score); // 按分数从高到低排序
+            .sort((a, b) => b.score - a.score) // 按分数从高到低排序
+            .slice(0, 3); // 限制只返回前3个结果
 
-        // 取前3个最佳匹配，留出空间给AI建议
-        matches.push(...scoredMatches.slice(0, 3).map(item => item.task));
+        // 取前三个最相关的匹配项
+        scoredMatches.forEach(item => {
+            matches.push({
+                title: item.task.title,
+                priority: item.task.priority,
+                estimatedTime: item.task.estimatedTime,
+                tags: item.task.tags
+            });
+        });
     }
 
-    // 合并历史匹配和AI建议，确保AI建议不会被历史记录完全覆盖
-    matches.push(...aiSuggestions);
+    // 合并AI建议和历史匹配，最多保留3个结果
+    const combinedMatches = [...matches];
 
-    console.log('匹配结果:', matches.length, '其中AI建议:', aiSuggestions.length);
+    // 如果历史匹配不够3个，添加AI建议补充
+    if (combinedMatches.length < 3) {
+        const remainingSlots = 3 - combinedMatches.length;
+        const aiMatchesToAdd = aiSuggestions.slice(0, remainingSlots);
+        combinedMatches.push(...aiMatchesToAdd);
+    }
 
-    return matches.slice(0, 5); // 最多返回5个结果
+    // 确保只返回最多3个结果
+    return combinedMatches.slice(0, 3);
 }
 
 // 生成智能建议
 function generateSuggestions(inputText) {
+    // 根据输入文本生成建议
     const suggestions = [];
+    const lowerInput = inputText.toLowerCase();
 
-    // 避免空输入
-    if (!inputText || inputText.trim() === '') {
-        inputText = '任务';
-    }
-
-    console.log('为输入生成AI建议:', inputText);
-
-    // 检查输入是否包含优先级信息
-    let priority = 'Medium'; // 默认中等优先级
-    const priorityMatch = inputText.match(/\[(紧急|高|中|低)\]/);
-    if (priorityMatch) {
-        const priorityMap = {
-            '紧急': 'Urgent',
-            '高': 'High',
-            '中': 'Medium',
-            '低': 'Low'
-        };
-        priority = priorityMap[priorityMatch[1]];
-        console.log('从输入中检测到优先级:', priority);
-    }
-
-    // 提取纯文本内容（移除优先级标记）
-    let pureText = inputText;
-    if (priorityMatch) {
-        pureText = inputText.replace(priorityMatch[0], '').trim();
-    }
-    if (pureText === '') {
-        pureText = '任务';
-    }
-
-    // 根据输入的文本生成智能建议
-    // 示例：如果用户输入"会议"，可以建议"准备会议材料"、"安排会议室"等
-
-    // 常见任务建议模板 - 确保AI推荐始终存在，并使用用户指定的优先级
-    const taskTemplates = [
-        { title: '完成' + pureText, priority: priority, estimatedTime: '1h', tags: ['工作'], isAISuggestion: true },
-        { title: '检查' + pureText, priority: priority, estimatedTime: '30m', tags: ['日常'], isAISuggestion: true },
+    // 基本常见任务模板
+    const commonTaskTemplates = [
+        { prefix: '修复', title: '修复问题', priority: 'Medium' },
+        { prefix: '开发', title: '开发新功能', priority: 'Medium' },
+        { prefix: '更新', title: '更新文档', priority: 'Low' },
+        { prefix: '优化', title: '优化性能', priority: 'Medium' },
+        { prefix: '测试', title: '测试功能', priority: 'Medium' },
+        { prefix: '部署', title: '部署应用', priority: 'High' },
+        { prefix: '会议', title: '参加会议', priority: 'Medium' },
+        { prefix: '设计', title: '设计UI', priority: 'Medium' },
+        { prefix: '研究', title: '研究方案', priority: 'Low' },
+        { prefix: '准备', title: '准备演示', priority: 'Medium' },
+        { prefix: '审核', title: '审核代码', priority: 'Medium' },
+        { prefix: '跟进', title: '跟进问题', priority: 'Medium' },
+        { prefix: '学习', title: '学习新技术', priority: 'Low' },
+        { prefix: '沟通', title: '沟通需求', priority: 'Medium' },
+        { prefix: '撰写', title: '撰写报告', priority: 'Medium' }
     ];
 
-    // 添加带有AI标记的建议
-    suggestions.push(...taskTemplates.map(template => ({
-        id: uuidv4(),
-        title: template.title,
-        priority: template.priority,
-        estimatedTime: template.estimatedTime,
-        tags: template.tags,
-        created: new Date().toISOString(),
-        completed: false,
-        isAISuggestion: true
-    })));
+    // 查找匹配前缀的模板
+    for (const template of commonTaskTemplates) {
+        if (lowerInput.includes(template.prefix.toLowerCase())) {
+            // 如果输入包含模板前缀，基于该模板创建一个建议
+            const combinedTitle = inputText + (
+                inputText.endsWith(template.prefix) ?
+                    template.title.substring(template.prefix.length) :
+                    (inputText.includes(template.title) ? '' : ' ' + template.title.substring(template.prefix.length))
+            );
 
-    console.log('生成了AI建议:', suggestions.length, '个');
+            suggestions.push({
+                title: combinedTitle.trim(),
+                priority: template.priority
+            });
+        }
+    }
 
-    return suggestions;
+    // 如果没有匹配的前缀模板，创建一些基于常见类别的建议
+    if (suggestions.length === 0) {
+        const categories = ['功能', '问题', '优化', '需求'];
+
+        for (const category of categories) {
+            if (suggestions.length < 3) { // 确保最多只添加3个
+                suggestions.push({
+                    title: `${inputText} ${category}`,
+                    priority: 'Medium'
+                });
+            }
+        }
+    }
+
+    // 确保最多返回3个建议
+    return suggestions.slice(0, 3);
 }
 
 // 添加窗口大小变化监听，调整自动补全容器位置
@@ -1588,5 +1707,11 @@ document.addEventListener('keydown', (e) => {
     // 按下Ctrl+Alt+D显示调试信息
     if (e.ctrlKey && e.altKey && e.code === 'KeyD') {
         debugLlmState();
+    }
+
+    // 按下Ctrl+R刷新应用
+    if (e.ctrlKey && e.code === 'KeyR') {
+        console.log('用户请求刷新应用');
+        ipcRenderer.send('reload-app');
     }
 }); 

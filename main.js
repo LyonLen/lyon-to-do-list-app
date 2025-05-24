@@ -487,7 +487,7 @@ if (!gotTheLock) {
         // Minimize window
         ipcMain.on('minimize-window', () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.hide();
+                mainWindow.minimize();
             }
         });
 
@@ -500,36 +500,9 @@ if (!gotTheLock) {
         // 处理窗口聚焦请求
         ipcMain.on('focus-window', () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
-                try {
-                    // 模拟窗口失焦再聚焦的过程
-                    console.log('开始模拟窗口失焦再聚焦过程');
-
-                    // 先隐藏窗口再显示，模拟窗口重新创建
-                    mainWindow.hide();
-
-                    // 短暂延迟后再显示窗口
-                    setTimeout(() => {
-                        // 显示窗口
-                        mainWindow.show();
-                        // 强制置顶
-                        mainWindow.setAlwaysOnTop(true);
-                        // 强制获取焦点
-                        mainWindow.focus();
-                        mainWindow.moveTop(); // 将窗口移至所有窗口顶部
-
-                        // 等窗口完全显示后恢复原始设置
-                        setTimeout(() => {
-                            const { alwaysOnTop } = store.get('settings');
-                            mainWindow.setAlwaysOnTop(alwaysOnTop);
-                            // 向渲染进程发送信号，指示窗口已获得焦点
-                            mainWindow.webContents.send('window-focused');
-                            console.log('窗口完成聚焦过程');
-                        }, 200);
-
-                    }, 100);
-                } catch (error) {
-                    console.error('窗口聚焦过程发生错误:', error);
-                }
+                mainWindow.show();
+                mainWindow.focus();
+                mainWindow.webContents.send('window-focused');
             }
         });
 
@@ -539,24 +512,11 @@ if (!gotTheLock) {
         });
 
         // 处理窗口大小调整请求
-        ipcMain.on('resize-window', (event, { height }) => {
+        ipcMain.on('resize-window', (event, data) => {
+            const height = data.height || 600;
             if (mainWindow && !mainWindow.isDestroyed()) {
-                try {
-                    // 获取当前窗口位置和宽度
-                    const bounds = mainWindow.getBounds();
-
-                    // 只更新高度，保持其他属性不变
-                    mainWindow.setBounds({
-                        x: bounds.x,
-                        y: bounds.y,
-                        width: bounds.width,
-                        height: height
-                    });
-
-                    console.log(`Window resized to height: ${height}`);
-                } catch (error) {
-                    console.error('调整窗口大小失败:', error);
-                }
+                const bounds = mainWindow.getBounds();
+                mainWindow.setBounds({ ...bounds, height });
             }
         });
 
@@ -593,10 +553,7 @@ if (!gotTheLock) {
 
         // 打开开发者工具
         ipcMain.on('open-devtools', () => {
-            const focusedWindow = BrowserWindow.getFocusedWindow();
-            if (focusedWindow) {
-                focusedWindow.webContents.openDevTools();
-            } else if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.openDevTools();
             }
         });
@@ -658,6 +615,14 @@ if (!gotTheLock) {
             } catch (error) {
                 console.error('获取甘特图任务数据失败:', error);
                 return [];
+            }
+        });
+
+        // 接收刷新应用的消息
+        ipcMain.on('reload-app', () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                console.log('刷新主窗口');
+                mainWindow.reload();
             }
         });
     }
