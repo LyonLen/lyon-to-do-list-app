@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lyon Reminder Settings</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: rgba(40, 44, 52, 0.95);
+            color: #f8f8f8;
+            border-radius: 12px;
+            overflow: hidden;
+            user-select: none;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: rgba(30, 34, 42, 0.9);
+            -webkit-app-region: drag;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 16px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .control-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .settings-group {
+            margin-bottom: 24px;
+        }
+
+        .settings-group h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #c8c8c8;
+            font-weight: 500;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: rgba(50, 54, 62, 0.7);
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+        }
+
+        .setting-description {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #555;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #4c8bf5;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #4c8bf5;
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(20px);
+            -ms-transform: translateX(20px);
+            transform: translateX(20px);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+            gap: 12px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .primary-button {
+            background-color: #4c8bf5;
+            color: white;
+        }
+
+        .secondary-button {
+            background-color: transparent;
+            color: #aaa;
+            border: 1px solid #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="title-bar">
+            <div class="title">设置</div>
+            <div class="controls">
+                <button class="control-btn" id="close-btn">×</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="settings-group">
+                <h2>外观</h2>
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">始终置顶</div>
+                        <div class="setting-description">保持提醒窗口在其他窗口之上</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="alwaysOnTop">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">失焦自动隐藏</div>
+                        <div class="setting-description">点击窗口外部时自动隐藏</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoHide">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">边缘检测</div>
+                        <div class="setting-description">窗口靠近屏幕边缘时自动隐藏</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="edgeDetection">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h2>反馈</h2>
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">完成动画</div>
+                        <div class="setting-description">完成任务时显示动画效果</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showCompletionAnimation">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">完成音效</div>
+                        <div class="setting-description">完成任务时播放音效</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="playCompletionSound">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <button class="button secondary-button" id="cancel-btn">取消</button>
+                <button class="button primary-button" id="save-btn">保存更改</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+
+</html>

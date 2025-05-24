@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lyon Reminder</title>
+    <style>
+        html,
+        body {
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: rgba(30, 34, 42, 0.9);
+            color: #f8f8f8;
+            user-select: none;
+            -webkit-app-region: drag;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: rgba(25, 28, 35, 0.95);
+        }
+
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: transparent;
+            position: relative;
+            z-index: 2;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+            height: 24px;
+            align-items: center;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        #close-btn {
+            font-size: 16px;
+        }
+
+        #minimize-btn {
+            line-height: 0.6;
+            font-weight: bold;
+        }
+
+        #settings-btn {
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .control-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .task-controls .control-btn {
+            width: 26px;
+            height: 26px;
+            background-color: transparent;
+            z-index: 15;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .task-controls .control-btn::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            z-index: -1;
+        }
+
+        .content {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            margin-bottom: 60px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            background-color: rgba(30, 34, 42, 0.95);
+            position: relative;
+            z-index: 1;
+        }
+
+        .task-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .task-item {
+            background-color: rgba(40, 45, 55, 0.9);
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            position: relative;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            -webkit-app-region: no-drag;
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+        .priority-urgent {
+            border-left-color: #ff5252;
+        }
+
+        .priority-high {
+            border-left-color: #ffb142;
+        }
+
+        .priority-medium {
+            border-left-color: #2196f3;
+        }
+
+        .priority-low {
+            border-left-color: #4caf50;
+        }
+
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            margin-right: 70px;
+            /* 为按钮区域预留空间 */
+            word-break: break-word;
+            /* 允许长文本换行 */
+            overflow: hidden;
+            user-select: text;
+            /* 允许选中文本 */
+            cursor: text;
+            /* 显示文本选择光标 */
+            -webkit-user-select: text;
+            /* 兼容Webkit */
+        }
+
+        .task-meta {
+            font-size: 12px;
+            color: #bbb;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        /* 添加meta-left样式，用于放置时间和标签 */
+        .meta-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* 任务时间样式 */
+        .task-time {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .task-tag {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .task-controls {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+            background-color: transparent;
+            padding: 3px;
+            border-radius: 4px;
+        }
+
+        .add-task {
+            display: none;
+        }
+
+        .task-input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(25, 28, 35, 0.98);
+            padding: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            display: block;
+            -webkit-app-region: no-drag;
+            z-index: 1000;
+            box-sizing: border-box;
+            width: 100%;
+            pointer-events: auto;
+        }
+
+        .task-input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(35, 40, 50, 0.9);
+            color: white;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .task-input:focus {
+            outline: none;
+            border-color: #4c8bf5;
+        }
+
+        .task-input-help {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .completed-animation {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 0;
+            color: #aaa;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            margin-top: 12px;
+        }
+
+        .task-submit-btn {
+            display: none;
+        }
+
+        /* 添加优先级图例样式 */
+        .priority-legend {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 0 0 10px 0;
+            padding: 6px;
+            font-size: 11px;
+            color: #bbb;
+            background-color: rgba(25, 28, 35, 0.85);
+            border-radius: 4px;
+            z-index: 9999;
+            /* 增加z-index确保能接收点击事件 */
+            position: relative;
+            /* 确保z-index生效 */
+            cursor: pointer;
+            /* 添加指针样式提示可点击 */
+            pointer-events: auto;
+            /* 确保可以接收鼠标事件 */
+        }
+
+        .priority-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: auto;
+            /* 确保可以接收鼠标事件 */
+            z-index: 10000;
+            /* 确保能在自动补全之上 */
+        }
+
+        .priority-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .priority-color.urgent {
+            background-color: #ff5252;
+        }
+
+        .priority-color.high {
+            background-color: #ffb142;
+        }
+
+        .priority-color.medium {
+            background-color: #2196f3;
+        }
+
+        .priority-color.low {
+            background-color: #4caf50;
+        }
+
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+            background-color: transparent;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: transparent;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(80, 85, 95, 0.4);
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(100, 105, 115, 0.6);
+        }
+
+        /* 鼠标悬停在内容区域时显示滚动条 */
+        .content:hover {
+            scrollbar-color: rgba(80, 85, 95, 0.4) transparent;
+        }
+
+        /* 正在滚动时显示滚动条 */
+        .content.scrolling::-webkit-scrollbar-thumb {
+            background-color: rgba(80, 85, 95, 0.6);
+        }
+
+        .content.scrolling {
+            scrollbar-color: rgba(80, 85, 95, 0.6) transparent;
+        }
+
+        /* 添加粘性定位，使图例在滚动时保持可见 */
+        .priority-legend.sticky {
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 输入框包装器，用于定位自动补全框 */
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        /* 自动补全选项样式 */
+        .autocomplete-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(80, 85, 95, 0.5);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 1000;
+            pointer-events: auto;
+            min-height: 24px;
+        }
+
+        /* 自动补全选项样式 - 只有选中效果，没有hover效果 */
+        .autocomplete-item.selected {
+            background-color: rgba(76, 139, 245, 0.2);
+        }
+
+        /* 自动补全选项中的其他元素 */
+        .autocomplete-item>* {
+            position: relative;
+            pointer-events: auto;
+            /* 允许子元素接收鼠标事件 */
+        }
+
+        /* 自动补全容器样式 */
+        .autocomplete-container {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background-color: rgba(35, 40, 50, 0.98);
+            border: 1px solid rgba(80, 85, 95, 0.6);
+            border-radius: 6px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+            z-index: 9999;
+            margin-bottom: 5px;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            opacity: 0;
+        }
+
+        /* 显示自动补全容器 */
+        .autocomplete-container.show {
+            max-height: 250px;
+            overflow-y: auto;
+            opacity: 1;
+        }
+
+        /* 自动补全选项中的优先级标识 */
+        .autocomplete-priority {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        /* 不同优先级的颜色 */
+        .autocomplete-priority.urgent {
+            background-color: #ff5252;
+        }
+
+        .autocomplete-priority.high {
+            background-color: #ffb142;
+        }
+
+        .autocomplete-priority.medium {
+            background-color: #2196f3;
+        }
+
+        .autocomplete-priority.low {
+            background-color: #4caf50;
+        }
+
+        /* 自动补全选项中的标签样式 */
+        .autocomplete-tags {
+            margin-left: auto;
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        /* 自动补全选项中的提示信息 */
+        .autocomplete-hint {
+            position: sticky;
+            top: 0;
+            background-color: rgba(25, 28, 35, 0.95);
+            padding: 5px 10px;
+            font-size: 10px;
+            color: #888;
+            border-bottom: 1px solid rgba(80, 85, 95, 0.4);
+        }
+
+        /* 自动补全选项中的AI标签 */
+        .ai-tag {
+            background-color: rgba(76, 139, 245, 0.7);
+            color: white;
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 6px;
+            font-weight: bold;
+        }
+
+        /* AI建议项的特殊样式 */
+        .autocomplete-item.ai-suggestion {
+            border-left: 2px solid rgba(76, 139, 245, 0.7);
+            background-color: rgba(76, 139, 245, 0.05);
+        }
+
+        /* 空状态提示 */
+        .autocomplete-empty {
+            padding: 10px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            font-size: 12px;
+        }
+
+        /* 自动补全选项中的标题样式 */
+        .autocomplete-title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 5px;
+        }
+
+        /* 自动补全选项样式 - 只有选中效果，没有hover效果 */
+        .autocomplete-item.selected {
+            background-color: rgba(76, 139, 245, 0.2);
+        }
+
+        /* 已完成任务样式 */
+        .task-completed {
+            opacity: 0.7;
+            background-color: rgba(35, 40, 45, 0.8);
+            border-left-color: #808080;
+        }
+
+        .task-completed .task-title {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* 任务分隔线样式 */
+        .task-separator {
+            margin: 15px 0;
+            padding: 5px 10px;
+            background-color: rgba(40, 45, 50, 0.7);
+            border-radius: 4px;
+            color: #aaa;
+            font-size: 12px;
+            text-align: center;
+            position: relative;
+        }
+
+        .task-separator:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background-color: rgba(255, 255, 255, 0.1);
+            z-index: -1;
+        }
+
+        /* 删除按钮样式 */
+        .delete-btn {
+            color: #ff5252;
+        }
+
+        .delete-btn:hover {
+            background-color: transparent;
+            color: #ff7070;
+        }
+
+        /* 任务控制按钮悬停效果 */
+        .task-controls .control-btn:hover {
+            background-color: transparent;
+            transform: scale(1.1);
+            color: #fff;
+        }
+
+        /* 完成时间样式 */
+        .task-completed-time {
+            color: #66bb6a;
+            font-size: 11px;
+            margin-left: 4px;
+        }
+
+        /* 创建时间样式 */
+        .task-created-time {
+            color: #64b5f6;
+            font-size: 11px;
+            margin-left: 4px;
+        }
+
+        /* 花费时间样式 */
+        .task-duration {
+            color: #ffa726;
+            font-size: 11px;
+            margin-left: 4px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 4px;
+        }
+
+        /* 时间信息容器 */
+        .time-info {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="title-bar">
+            <div class="title">Lyon Task List</div>
+            <div class="controls">
+                <button class="control-btn" id="gantt-btn" title="甘特图">📊</button>
+                <button class="control-btn" id="settings-btn">⚙</button>
+                <button class="control-btn" id="minimize-btn">-</button>
+                <button class="control-btn" id="close-btn">×</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- 优先级图例放在最顶部 -->
+            <div class="priority-legend sticky">
+                <div class="priority-item">
+                    <div class="priority-color urgent"></div>
+                    <span>紧急</span>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-color high"></div>
+                    <span>高</span>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-color medium"></div>
+                    <span>中</span>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-color low"></div>
+                    <span>低</span>
+                </div>
+            </div>
+
+            <ul class="task-list" id="taskList">
+                <!-- Tasks will be populated here -->
+            </ul>
+            <div class="empty-state" id="emptyState">
+                <div>📝</div>
+                <p>没有任务</p>
+            </div>
+        </div>
+
+        <div class="task-input-container" id="taskInputContainer">
+            <div class="input-wrapper">
+                <input type="text" class="task-input" id="taskInput" placeholder="[紧急] 描述 @2h #标签">
+                <!-- 添加自动补全提示框 -->
+                <div class="autocomplete-container" id="autocompleteContainer">
+                    <!-- 自动补全选项将在这里动态生成 -->
+                </div>
+            </div>
+            <div class="task-input-help">
+                支持 Markdown: [紧急/高/中/低] 描述 @预估时间 #标签
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

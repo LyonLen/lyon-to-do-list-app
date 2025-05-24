@@ -1,0 +1,38 @@
+{
+  "name": "lyon_reminder",
+  "version": "1.0.0",
+  "description": "A programmer-friendly desktop reminder application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dev": "electron ."
+  },
+  "keywords": [
+    "reminder",
+    "todo",
+    "productivity",
+    "developer-tools"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-markdown": "latest",
+    "styled-components": "latest",
+    "uuid": "latest"
+  },
+  "build": {
+    "appId": "com.lyon.reminder",
+    "productName": "Lyon Reminder",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
