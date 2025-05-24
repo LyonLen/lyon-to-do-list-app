@@ -554,7 +554,14 @@ if (!gotTheLock) {
         // 打开开发者工具
         ipcMain.on('open-devtools', () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.openDevTools();
+                mainWindow.webContents.openDevTools({ mode: 'detach' });
+            }
+        });
+
+        // 甘特图窗口的开发者工具
+        ipcMain.on('open-gantt-devtools', () => {
+            if (ganttWindow && !ganttWindow.isDestroyed()) {
+                ganttWindow.webContents.openDevTools({ mode: 'detach' });
             }
         });
 

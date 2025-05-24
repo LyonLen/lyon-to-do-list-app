@@ -204,7 +204,7 @@ function setupEventListeners() {
 
     // 开发者工具按钮
     devToolsBtn.addEventListener('click', () => {
-        ipcRenderer.send('open-devtools');
+        ipcRenderer.send('open-gantt-devtools');
     });
 
     // 视图切换
