@@ -1121,26 +1121,25 @@ function renderAutocompleteItems(items) {
         element.dataset.index = index;
 
         if (item.isLoading) {
-            // 加载中状态 - 使用红色背景突出显示第一项
+            // 加载中状态 - 使用柔和的蓝色背景
             element.classList.add('loading-item');
             if (index === 0) {
                 element.classList.add('first-item');
-                element.innerHTML = `<span class="ai-suggestion-title">${item.title}</span><div class="loading-spinner"></div>`;
+                element.innerHTML = `<span class="ai-suggestion-title">AI推荐任务信息</span><div class="loading-spinner"></div>`;
             } else {
                 element.innerHTML = `<span>${item.title}</span><div class="loading-spinner"></div>`;
             }
         } else if (item.isLlmSuggestion) {
-            // LLM推荐项目 - 第一个LLM推荐使用红色背景
+            // LLM推荐项目 - 使用柔和的颜色
             element.classList.add('llm-suggestion');
             if (index === 0) {
                 element.classList.add('first-item');
                 element.innerHTML = `
-                    <span class="llm-icon">🤖</span>
                     <span class="ai-suggestion-title">${item.title}</span>
                 `;
             } else {
                 element.innerHTML = `
-                    <span class="llm-icon">🤖</span>
+                    <span class="llm-icon">•</span>
                     <span class="suggestion-text">${item.title}</span>
                 `;
             }
