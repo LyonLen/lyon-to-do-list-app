@@ -704,6 +704,87 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* 标签切换和Markdown预览样式 */
+        .notes-container {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .notes-tabs {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .notes-tab {
+            padding: 8px 15px;
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .notes-tab.active {
+            background-color: rgba(33, 150, 243, 0.3);
+            color: white;
+        }
+
+        .notes-content {
+            position: relative;
+        }
+
+        .notes-panel {
+            display: none;
+            padding: 0;
+        }
+
+        .notes-panel.active {
+            display: block;
+        }
+
+        .markdown-preview {
+            padding: 10px;
+            min-height: 120px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Markdown样式 */
+        .markdown-preview h1,
+        .markdown-preview h2,
+        .markdown-preview h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            color: #2196f3;
+        }
+
+        .markdown-preview p {
+            margin: 0.5em 0;
+        }
+
+        .markdown-preview ul,
+        .markdown-preview ol {
+            padding-left: 1.5em;
+        }
+
+        .markdown-preview code {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .markdown-preview blockquote {
+            border-left: 3px solid #2196f3;
+            padding-left: 10px;
+            margin-left: 0;
+            color: #aaa;
+        }
     </style>
 </head>
 
@@ -763,6 +844,69 @@
             </div>
         </div>
     </div>
+
+    <!-- 任务详情修改页面 - 已迁移到单独的taskEdit.html -->
+    <!--
+    <div id="taskEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">编辑任务</span>
+                <button id="closeTaskEditModal" class="control-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="taskEditForm">
+                    <input type="hidden" id="editTaskId">
+                    <div class="form-group">
+                        <label for="editTaskTitle">任务标题</label>
+                        <input type="text" id="editTaskTitle" class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskStartTime">开始时间</label>
+                        <input type="datetime-local" id="editTaskStartTime" class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskTags">标签（以逗号分隔）</label>
+                        <input type="text" id="editTaskTags" class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskEstimatedTime">预估时长</label>
+                        <input type="text" id="editTaskEstimatedTime" class="modal-input" placeholder="例如: 2h30m">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskPriority">紧急程度</label>
+                        <select id="editTaskPriority" class="modal-input">
+                            <option value="Urgent">紧急</option>
+                            <option value="High">高</option>
+                            <option value="Medium">中</option>
+                            <option value="Low">低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskNotes">任务备忘录（支持Markdown）</label>
+                        <div class="notes-container">
+                            <div class="notes-tabs">
+                                <button type="button" class="notes-tab active" data-tab="edit">编辑</button>
+                                <button type="button" class="notes-tab" data-tab="preview">预览</button>
+                            </div>
+                            <div class="notes-content">
+                                <div class="notes-panel active" id="editPanel">
+                                    <textarea id="editTaskNotes" class="modal-textarea"></textarea>
+                                </div>
+                                <div class="notes-panel" id="previewPanel">
+                                    <div id="markdownPreview" class="markdown-preview"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="saveTaskBtn" class="btn btn-primary">保存</button>
+                        <button type="button" id="cancelTaskEditBtn" class="btn btn-secondary">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    -->
 
     <script src="renderer.js"></script>
 </body>

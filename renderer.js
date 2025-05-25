@@ -2,6 +2,8 @@ const { ipcRenderer } = require('electron');
 const { v4: uuidv4 } = require('uuid');
 // 添加axios用于API请求
 const axios = require('axios');
+// 添加marked用于Markdown渲染
+const marked = require('marked');
 
 // DOM Elements
 const taskList = document.getElementById('taskList');
@@ -116,6 +118,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // IPC Event listeners
 ipcRenderer.on('open-settings', () => {
     openSettings();
+});
+
+// 监听来自主进程的刷新任务列表消息
+ipcRenderer.on('refresh-tasks', async () => {
+    await loadTasks();
 });
 
 // Window control event listeners
@@ -669,6 +676,9 @@ function renderTasks(tasks) {
                 hideAutocomplete();
             }
         });
+
+        // 添加任务项点击事件，打开任务编辑窗口
+        addTaskItemClickEvent(li, task);
 
         // Assemble the task item
         li.appendChild(title);
@@ -1713,4 +1723,16 @@ document.addEventListener('keydown', (e) => {
         console.log('用户请求刷新应用');
         ipcRenderer.send('reload-app');
     }
-}); 
+});
+
+// 为任务项添加点击事件，打开任务编辑窗口
+function addTaskItemClickEvent(taskElement, task) {
+    taskElement.addEventListener('click', (event) => {
+        // 如果点击的是控制按钮，不执行编辑操作
+        if (event.target.closest('.task-controls')) {
+            return;
+        }
+        // 发送消息到主进程打开任务编辑窗口
+        ipcRenderer.send('open-task-edit', task);
+    });
+} 

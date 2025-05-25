@@ -27,6 +27,7 @@ const store = new Store({
 let mainWindow;
 let settingsWindow;
 let ganttWindow;
+let taskEditWindow;
 let tray;
 let isQuitting = false;
 let isHidden = false;
@@ -360,6 +361,52 @@ if (!gotTheLock) {
         });
     }
 
+    // 创建任务编辑窗口
+    function createTaskEditWindow(task) {
+        if (taskEditWindow) {
+            // 如果窗口已存在，只更新数据
+            taskEditWindow.webContents.send('task-data', task);
+            taskEditWindow.focus();
+            return;
+        }
+
+        const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+        taskEditWindow = new BrowserWindow({
+            width: 450,
+            height: 650,
+            x: Math.floor(width / 2 - 225),
+            y: Math.floor(height / 2 - 325),
+            frame: false,
+            transparent: true,
+            resizable: false,
+            alwaysOnTop: true,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false,
+                enableRemoteModule: true,
+                devTools: true
+            },
+            hasShadow: true,
+            roundedCorners: true
+        });
+
+        taskEditWindow.loadFile('taskEdit.html');
+        taskEditWindow.setTitle('编辑任务');
+
+        // 在加载完成后发送任务数据
+        taskEditWindow.webContents.on('did-finish-load', () => {
+            taskEditWindow.webContents.send('task-data', task);
+        });
+
+        // 隐藏菜单栏
+        taskEditWindow.setMenuBarVisibility(false);
+
+        taskEditWindow.on('closed', () => {
+            taskEditWindow = null;
+        });
+    }
+
     // IPC Events
     function setupIPCEvents() {
         // Get tasks from store
@@ -411,7 +458,14 @@ if (!gotTheLock) {
             const tasks = store.get('tasks');
             const index = tasks.findIndex(t => t.id === updatedTask.id);
             if (index !== -1) {
-                tasks[index] = updatedTask;
+                // 保留原有任务的完成状态和完成时间等属性
+                const existingTask = tasks[index];
+                tasks[index] = {
+                    ...existingTask,               // 保留原有属性
+                    ...updatedTask,                // 更新修改的属性
+                    completed: existingTask.completed,  // 确保保留完成状态
+                    completedAt: existingTask.completedAt  // 确保保留完成时间
+                };
                 store.set('tasks', tasks);
             }
             return tasks;
@@ -630,6 +684,46 @@ if (!gotTheLock) {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 console.log('刷新主窗口');
                 mainWindow.reload();
+            }
+        });
+
+        // 打开任务编辑窗口
+        ipcMain.on('open-task-edit', (event, task) => {
+            createTaskEditWindow(task);
+        });
+
+        // 关闭任务编辑窗口
+        ipcMain.on('close-task-edit-window', () => {
+            if (taskEditWindow && !taskEditWindow.isDestroyed()) {
+                taskEditWindow.close();
+            }
+        });
+
+        // 从编辑窗口更新任务
+        ipcMain.on('update-task-from-edit-window', (event, updatedTask) => {
+            // 更新任务
+            const tasks = store.get('tasks');
+            const index = tasks.findIndex(t => t.id === updatedTask.id);
+            if (index !== -1) {
+                // 保留原有任务的完成状态和完成时间等属性
+                const existingTask = tasks[index];
+                tasks[index] = {
+                    ...existingTask,               // 保留原有属性
+                    ...updatedTask,                // 更新修改的属性
+                    completed: existingTask.completed,  // 确保保留完成状态
+                    completedAt: existingTask.completedAt  // 确保保留完成时间
+                };
+                store.set('tasks', tasks);
+            }
+
+            // 通知主窗口刷新任务列表
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('refresh-tasks');
+            }
+
+            // 关闭编辑窗口
+            if (taskEditWindow && !taskEditWindow.isDestroyed()) {
+                taskEditWindow.close();
             }
         });
     }

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>任务详情</title>
+    <style>
+        html,
+        body {
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: rgba(30, 34, 42, 0.9);
+            color: #f8f8f8;
+            user-select: none;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: transparent;
+            position: relative;
+            z-index: 1000;
+            -webkit-app-region: drag;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 600;
+            -webkit-app-region: drag;
+        }
+
+        .controls {
+            display: flex;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+            height: 24px;
+            align-items: center;
+            position: relative;
+            z-index: 1001;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+            position: relative;
+            z-index: 1002;
+        }
+
+        #close-btn {
+            font-size: 16px;
+        }
+
+        .control-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .content {
+            padding: 15px;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            height: calc(100vh - 100px);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 0 15px 15px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border-radius: 4px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #2196f3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0d8aee;
+        }
+
+        .btn-secondary {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ddd;
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 标签切换和Markdown预览样式 */
+        .notes-container {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .notes-tabs {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .notes-tab {
+            padding: 8px 15px;
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .notes-tab.active {
+            background-color: rgba(33, 150, 243, 0.3);
+            color: white;
+        }
+
+        .notes-content {
+            position: relative;
+        }
+
+        .notes-panel {
+            display: none;
+            padding: 0;
+        }
+
+        .notes-panel.active {
+            display: block;
+        }
+
+        .markdown-preview {
+            padding: 10px;
+            min-height: 120px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Markdown样式 */
+        .markdown-preview h1,
+        .markdown-preview h2,
+        .markdown-preview h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            color: #2196f3;
+        }
+
+        .markdown-preview p {
+            margin: 0.5em 0;
+        }
+
+        .markdown-preview ul,
+        .markdown-preview ol {
+            padding-left: 1.5em;
+        }
+
+        .markdown-preview code {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .markdown-preview blockquote {
+            border-left: 3px solid #2196f3;
+            padding-left: 10px;
+            margin-left: 0;
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title-bar">
+        <div class="title">编辑任务</div>
+        <div class="controls">
+            <button class="control-btn" id="close-btn">×</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <form id="taskEditForm">
+            <input type="hidden" id="editTaskId">
+            <div class="form-group">
+                <label for="editTaskTitle">任务标题</label>
+                <input type="text" id="editTaskTitle" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="editTaskStartTime">开始时间</label>
+                <input type="datetime-local" id="editTaskStartTime" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="editTaskTags">标签（以逗号分隔）</label>
+                <input type="text" id="editTaskTags" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="editTaskEstimatedTime">预估时长</label>
+                <input type="text" id="editTaskEstimatedTime" class="form-input" placeholder="例如: 2h30m">
+            </div>
+            <div class="form-group">
+                <label for="editTaskPriority">紧急程度</label>
+                <select id="editTaskPriority" class="form-input">
+                    <option value="Urgent">紧急</option>
+                    <option value="High">高</option>
+                    <option value="Medium">中</option>
+                    <option value="Low">低</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editTaskNotes">任务备忘录（支持Markdown）</label>
+                <div class="notes-container">
+                    <div class="notes-tabs">
+                        <button type="button" class="notes-tab active" data-tab="edit">编辑</button>
+                        <button type="button" class="notes-tab" data-tab="preview">预览</button>
+                    </div>
+                    <div class="notes-content">
+                        <div class="notes-panel active" id="editPanel">
+                            <textarea id="editTaskNotes" class="form-textarea"></textarea>
+                        </div>
+                        <div class="notes-panel" id="previewPanel">
+                            <div id="markdownPreview" class="markdown-preview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" id="saveTaskBtn" class="btn btn-primary">保存</button>
+        <button type="button" id="cancelTaskEditBtn" class="btn btn-secondary">取消</button>
+    </div>
+
+    <script src="taskEdit.js"></script>
+</body>
+
+</html>
