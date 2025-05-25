@@ -793,6 +793,7 @@ function renderWeekView(container) {
     // 创建时间轴
     const timeAxis = document.createElement('div');
     timeAxis.className = 'time-axis';
+    timeAxis.style.marginLeft = '180px';
 
     // 过滤符合日期范围的任务，排除已删除的任务
     const filteredTasks = allTasks.filter(task => {
@@ -811,12 +812,13 @@ function renderWeekView(container) {
         const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
 
         // 扩大过滤范围，包括开始日期前一天和结束日期后一天的任务
-        const extendedStartDate = new Date(startDate);
-        extendedStartDate.setDate(extendedStartDate.getDate() - 1);
+        const nowDate = new Date();
+        const extendedStartDate = new Date(year = nowDate.getFullYear(), month = nowDate.getMonth(), date = nowDate.getDate(), day = 0);
+        extendedStartDate.setDate(extendedStartDate.getDate());
         extendedStartDate.setHours(0, 0, 0, 0); // 设置为当天的开始
 
-        const extendedEndDate = new Date(endDate);
-        extendedEndDate.setDate(extendedEndDate.getDate() + 1);
+        const extendedEndDate = new Date(year = nowDate.getFullYear(), month = nowDate.getMonth(), date = nowDate.getDate(), day = 6);
+        extendedEndDate.setDate(extendedEndDate.getDate());
         extendedEndDate.setHours(23, 59, 59, 999); // 设置为当天的结束
 
         return taskDateOnly >= extendedStartDate && taskDateOnly <= extendedEndDate;
@@ -830,167 +832,29 @@ function renderWeekView(container) {
     const now = new Date();
     let earliestStart, latestEnd;
 
-    // 如果没有任务，显示默认时间轴
-    if (filteredTasks.length === 0) {
-        // 计算以当前时间为中心的周视图
-        earliestStart = new Date(now);
-        earliestStart.setDate(earliestStart.getDate() - now.getDay()); // 从本周日开始
-        earliestStart.setHours(0, 0, 0, 0);
+    // 计算以当前时间为中心的周视图
+    earliestStart = new Date(now);
+    earliestStart.setDate(earliestStart.getDate() - now.getDay()); // 从本周日开始
+    earliestStart.setHours(0, 0, 0, 0);
 
-        latestEnd = new Date(earliestStart);
-        latestEnd.setDate(latestEnd.getDate() + 7); // 显示一周
+    latestEnd = new Date(earliestStart);
+    latestEnd.setDate(latestEnd.getDate() + 7); // 显示一周
 
-        // 创建日期标签
-        for (let day = 0; day < 7; day++) {
-            const cellDate = new Date(earliestStart);
-            cellDate.setDate(cellDate.getDate() + day);
+    // 创建日期标签
+    for (let day = 0; day < 7; day++) {
+        const cellDate = new Date(earliestStart);
+        cellDate.setDate(cellDate.getDate() + day);
 
-            const timeCell = document.createElement('div');
-            timeCell.className = 'time-cell';
-            timeCell.classList.add('date-cell'); // 所有日期单元格添加样式
+        const timeCell = document.createElement('div');
+        timeCell.className = 'time-cell';
+        timeCell.classList.add('date-cell'); // 所有日期单元格添加样式
 
-            // 显示完整日期（带年份）和星期
-            const year = cellDate.getFullYear();
-            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-            timeCell.textContent = `${year}/${cellDate.getMonth() + 1}/${cellDate.getDate()} (${dayNames[cellDate.getDay()]})`;
+        // 显示完整日期（带年份）和星期
+        const year = cellDate.getFullYear();
+        const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+        timeCell.textContent = `${year}/${cellDate.getMonth() + 1}/${cellDate.getDate()} (${dayNames[cellDate.getDay()]})`;
 
-            timeAxis.appendChild(timeCell);
-        }
-    } else {
-        // 找出最早的开始时间和最晚的结束时间
-        earliestStart = new Date(Math.min(...filteredTasks.map(task => task.createdDate.getTime())));
-
-        // 计算最晚的结束时间
-        latestEnd = new Date(Math.max(...filteredTasks.map(task => {
-            if (task.completed && task.completedDate) {
-                return task.completedDate.getTime();
-            } else {
-                // 未完成任务使用预估结束时间
-                return task.createdDate.getTime() + (task.estimatedDuration || 3600000);
-            }
-        })));
-
-        // 向前取整到天（设置为当天的00:00:00）
-        earliestStart = new Date(earliestStart.getFullYear(), earliestStart.getMonth(), earliestStart.getDate());
-
-        // 向下取整到天（设置为当天的23:59:59，而不是第二天的00:00:00）
-        latestEnd = new Date(latestEnd.getFullYear(), latestEnd.getMonth(), latestEnd.getDate());
-        latestEnd.setHours(23, 59, 59, 999); // 设置为当天的最后一毫秒
-
-        // 确保当前时间在范围内
-        if (now > earliestStart && now < latestEnd) {
-            console.log("周视角 - 当前时间在任务范围内");
-        } else {
-            console.log("周视角 - 当前时间不在任务范围内，调整时间轴以包含当前时间");
-            // 如果当前时间不在范围内，调整时间轴以包含当前时间
-            if (now < earliestStart) {
-                earliestStart = new Date(now);
-                earliestStart.setDate(earliestStart.getDate() - 1); // 从当前日期前一天开始
-                earliestStart.setHours(0, 0, 0, 0);
-            } else if (now > latestEnd) {
-                latestEnd = new Date(now);
-                latestEnd.setDate(latestEnd.getDate()); // 使用当天日期，不加1
-                latestEnd.setHours(23, 59, 59, 999); // 设置为当天的最后一毫秒
-            }
-        }
-
-        // 至少显示3天的区间
-        if ((latestEnd - earliestStart) < 3 * 24 * 3600000) {
-            // 保持最早日期不变，将最晚日期设置为最早日期后的第3天的23:59:59
-            const endDate = new Date(earliestStart);
-            endDate.setDate(endDate.getDate() + 2); // 加2天，显示共3天
-            endDate.setHours(23, 59, 59, 999);
-            latestEnd = endDate;
-        }
-
-        // 计算任务集中的时间范围
-        let taskDistribution = new Map();
-
-        // 统计任务在每一天的分布情况
-        filteredTasks.forEach(task => {
-            const taskDay = new Date(task.createdDate.getFullYear(), task.createdDate.getMonth(), task.createdDate.getDate());
-            const dayKey = taskDay.toISOString().split('T')[0];
-
-            if (taskDistribution.has(dayKey)) {
-                taskDistribution.set(dayKey, taskDistribution.get(dayKey) + 1);
-            } else {
-                taskDistribution.set(dayKey, 1);
-            }
-        });
-
-        // 找出任务最多的日期
-        let maxTasksDay = null;
-        let maxTasksCount = 0;
-
-        taskDistribution.forEach((count, day) => {
-            if (count > maxTasksCount) {
-                maxTasksCount = count;
-                maxTasksDay = day;
-            }
-        });
-
-        if (maxTasksDay) {
-            console.log(`任务最集中的日期: ${maxTasksDay}，共有 ${maxTasksCount} 个任务`);
-
-            // 将任务最集中的日期作为中心，向前后延伸，确保至少显示3天
-            const centerDate = new Date(maxTasksDay);
-            earliestStart = new Date(centerDate);
-            earliestStart.setDate(centerDate.getDate() - 1); // 向前一天
-            earliestStart.setHours(0, 0, 0, 0);
-
-            latestEnd = new Date(centerDate);
-            latestEnd.setDate(centerDate.getDate() + 1); // 向后一天
-            latestEnd.setHours(23, 59, 59, 999);
-
-            // 确保当前时间在范围内
-            if (now < earliestStart || now > latestEnd) {
-                // 如果当前时间不在新范围内，调整以包含当前时间
-                const centerToNowDays = Math.round((now - centerDate) / (24 * 3600000));
-
-                if (centerToNowDays < -1) { // 当前时间在中心日期之前超过一天
-                    earliestStart = new Date(now);
-                    earliestStart.setHours(0, 0, 0, 0);
-                    // 保持3天的显示范围
-                    latestEnd = new Date(earliestStart);
-                    latestEnd.setDate(latestEnd.getDate() + 2);
-                    latestEnd.setHours(23, 59, 59, 999);
-                } else if (centerToNowDays > 1) { // 当前时间在中心日期之后超过一天
-                    latestEnd = new Date(now);
-                    latestEnd.setHours(23, 59, 59, 999);
-                    // 保持3天的显示范围
-                    earliestStart = new Date(latestEnd);
-                    earliestStart.setDate(earliestStart.getDate() - 2);
-                    earliestStart.setHours(0, 0, 0, 0);
-                }
-            }
-        }
-
-        // 计算总天数
-        const totalDays = Math.ceil((latestEnd - earliestStart) / (1000 * 60 * 60 * 24));
-
-        // 创建日期标签
-        for (let day = 0; day < totalDays; day++) {
-            const cellDate = new Date(earliestStart);
-            cellDate.setDate(cellDate.getDate() + day);
-
-            const timeCell = document.createElement('div');
-            timeCell.className = 'time-cell';
-            timeCell.classList.add('date-cell'); // 所有日期单元格添加样式
-
-            // 显示完整日期（带年份）和星期
-            const year = cellDate.getFullYear();
-            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-            timeCell.textContent = `${year}/${cellDate.getMonth() + 1}/${cellDate.getDate()} (${dayNames[cellDate.getDay()]})`;
-
-            timeAxis.appendChild(timeCell);
-        }
-
-        // 更新任务过滤的起止时间，保持一致性
-        startDateForTasks = earliestStart;
-        endDateForTasks = latestEnd;
-
-        // 输出调试信息
-        console.log(`周视角 - 动态时间轴范围: ${startDateForTasks.toLocaleString()} 到 ${endDateForTasks.toLocaleString()}`);
+        timeAxis.appendChild(timeCell);
     }
 
     container.appendChild(timeAxis);
@@ -998,13 +862,13 @@ function renderWeekView(container) {
     // 按创建日期排序
     filteredTasks.sort((a, b) => a.createdDate - b.createdDate);
 
-    // 使用动态计算的时间范围
-    const timeStart = startDateForTasks || startDate;
-    const totalDuration = endDateForTasks ? (endDateForTasks - timeStart) : (endDate - startDate);
 
-    // 调用调试函数
-    console.log('周视角 - 任务渲染调试:');
-    debugTaskRendering(filteredTasks, timeStart, totalDuration);
+    const nowDate = new Date();
+    const weekStartDate = new Date(year = nowDate.getFullYear(), month = nowDate.getMonth(), date = nowDate.getDate(), day = 0);
+    const weekEndDate = new Date(year = nowDate.getFullYear(), month = nowDate.getMonth(), date = nowDate.getDate(), day = 6);
+
+    // 使用动态计算的时间范围
+    const timeStart = weekStartDate;
 
     // 创建任务行和任务条区域容器
     const taskContainer = document.createElement('div');
@@ -1133,40 +997,35 @@ function renderWeekView(container) {
         // 计算在时间轴上的位置（毫秒精度）
         let startOffset, endOffset;
 
-        if (currentView === 'week') {
-            // 对于周视角，保证起始位置正确（按天对齐），但长度使用真实时间
-            const startDay = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
-            const timeStartDay = new Date(timeStart.getFullYear(), timeStart.getMonth(), timeStart.getDate());
+        // 对于周视角，保证起始位置正确（按天对齐），但长度使用真实时间
+        const startDay = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
+        const timeStartDay = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
 
-            // 计算起始日期偏移量（确保任务显示在正确的日期栏）
-            startOffset = Math.max(0, startDay - timeStartDay);
+        // 计算起始日期偏移量（确保任务显示在正确的日期栏）
+        startOffset = Math.max(0, startDay - timeStartDay);
 
-            // 计算任务实际持续时间
-            const taskDuration = endTime - startTime;
+        // 计算任务实际持续时间
+        const taskDuration = endTime - startTime;
 
-            // 设置最小持续时间为30分钟，避免任务条过窄
-            const minDuration = 30 * 60 * 1000; // 30分钟
-            const effectiveDuration = Math.max(taskDuration, minDuration);
+        // 设置最小持续时间为30分钟，避免任务条过窄
+        const minDuration = 30 * 60 * 1000; // 30分钟
+        const effectiveDuration = Math.max(taskDuration, minDuration);
 
-            // 使用实际持续时间计算结束偏移量
-            endOffset = startOffset + effectiveDuration;
+        // 使用实际持续时间计算结束偏移量
+        endOffset = startOffset + effectiveDuration;
 
-            // 调试信息
-            console.log(`周视角 - 任务: ${task.title}`);
-            console.log(`  实际持续时间: ${taskDuration / (1000 * 60 * 60)}小时`);
-            console.log(`  有效持续时间: ${effectiveDuration / (1000 * 60 * 60)}小时`);
-        } else {
-            // 日视角保持原来精确到小时的计算
-            startOffset = Math.max(0, startTime - timeStart);
-            endOffset = Math.max(startOffset + 60000, endTime - timeStart); // 确保至少有1分钟的宽度
-        }
+        // 调试信息
+        console.log(`周视角 - 任务: ${task.title}`);
+        console.log(`  实际持续时间: ${taskDuration / (1000 * 60 * 60)}小时`);
+        console.log(`  有效持续时间: ${effectiveDuration / (1000 * 60 * 60)}小时`);
 
         // 调试这个特定任务的位置
         console.log(`任务: ${task.title}`);
         console.log(`  任务开始时间: ${startTime.toLocaleString()}`);
         console.log(`  时间轴开始: ${timeStart.toLocaleString()}`);
         console.log(`  开始偏移: ${startOffset}ms (${startOffset / (1000 * 60 * 60)}小时)`);
-        console.log(`  总持续时间: ${totalDuration}ms (${totalDuration / (1000 * 60 * 60)}小时)`);
+
+        const totalDuration = weekEndDate - weekStartDate;
 
         // 设置任务条位置和宽度，确保最小宽度为10px
         const leftPercent = (startOffset * 100 / totalDuration);
