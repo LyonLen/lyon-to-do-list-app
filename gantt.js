@@ -247,6 +247,148 @@ function renderGanttChart() {
     const chartContent = document.createElement('div');
     chartContent.className = 'gantt-chart-content';
 
+    // 如果是日视角，添加导航箭头
+    if (currentView === 'day') {
+        // 基于startDate创建一个新的日期对象，避免共享引用
+        const displayDate = new Date(startDate);
+
+        // 添加导航控件容器
+        const navContainer = document.createElement('div');
+        navContainer.className = 'date-navigation';
+        navContainer.style.display = 'flex';
+        navContainer.style.justifyContent = 'space-between';
+        navContainer.style.alignItems = 'center';
+        navContainer.style.marginBottom = '10px';
+
+        // 创建向左箭头
+        const leftArrow = document.createElement('button');
+        leftArrow.className = 'nav-arrow left-arrow';
+        leftArrow.innerHTML = '&larr;';
+        leftArrow.title = '查看前一天';
+        leftArrow.style.backgroundColor = 'rgba(40, 43, 50, 0.8)';
+        leftArrow.style.color = '#aaa';
+        leftArrow.style.border = 'none';
+        leftArrow.style.borderRadius = '4px';
+        leftArrow.style.padding = '8px 15px';
+        leftArrow.style.cursor = 'pointer';
+        leftArrow.style.fontWeight = 'bold';
+        leftArrow.style.fontSize = '16px';
+        leftArrow.style.transition = 'all 0.2s ease';
+        leftArrow.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.2)';
+
+        // 创建向右箭头
+        const rightArrow = document.createElement('button');
+        rightArrow.className = 'nav-arrow right-arrow';
+        rightArrow.innerHTML = '&rarr;';
+        rightArrow.title = '查看后一天';
+        rightArrow.style.backgroundColor = 'rgba(40, 43, 50, 0.8)';
+        rightArrow.style.color = '#aaa';
+        rightArrow.style.border = 'none';
+        rightArrow.style.borderRadius = '4px';
+        rightArrow.style.padding = '8px 15px';
+        rightArrow.style.cursor = 'pointer';
+        rightArrow.style.fontWeight = 'bold';
+        rightArrow.style.fontSize = '16px';
+        rightArrow.style.transition = 'all 0.2s ease';
+        rightArrow.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.2)';
+
+        // 创建日期显示容器
+        const dateDisplay = document.createElement('div');
+        dateDisplay.className = 'current-date-display';
+        const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+        const dayOfWeek = displayDate.getDay();
+        dateDisplay.textContent = `${displayDate.getFullYear()}年${displayDate.getMonth() + 1}月${displayDate.getDate()}日 (${dayNames[dayOfWeek]})`;
+        dateDisplay.style.fontSize = '16px';
+        dateDisplay.style.fontWeight = 'bold';
+        dateDisplay.style.padding = '0 10px';
+
+        // 添加事件监听器
+        leftArrow.addEventListener('mouseenter', () => {
+            leftArrow.style.backgroundColor = 'rgba(50, 53, 60, 0.9)';
+            leftArrow.style.transform = 'translateY(-2px)';
+            leftArrow.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+            leftArrow.style.color = '#ddd';
+        });
+
+        leftArrow.addEventListener('mouseleave', () => {
+            leftArrow.style.backgroundColor = 'rgba(40, 43, 50, 0.8)';
+            leftArrow.style.transform = 'translateY(0)';
+            leftArrow.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.2)';
+            leftArrow.style.color = '#aaa';
+        });
+
+        rightArrow.addEventListener('mouseenter', () => {
+            rightArrow.style.backgroundColor = 'rgba(50, 53, 60, 0.9)';
+            rightArrow.style.transform = 'translateY(-2px)';
+            rightArrow.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+            rightArrow.style.color = '#ddd';
+        });
+
+        rightArrow.addEventListener('mouseleave', () => {
+            rightArrow.style.backgroundColor = 'rgba(40, 43, 50, 0.8)';
+            rightArrow.style.transform = 'translateY(0)';
+            rightArrow.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.2)';
+            rightArrow.style.color = '#aaa';
+        });
+
+        leftArrow.addEventListener('mousedown', () => {
+            leftArrow.style.transform = 'translateY(1px)';
+            leftArrow.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+        });
+
+        leftArrow.addEventListener('mouseup', () => {
+            leftArrow.style.transform = 'translateY(-2px)';
+            leftArrow.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+        });
+
+        rightArrow.addEventListener('mousedown', () => {
+            rightArrow.style.transform = 'translateY(1px)';
+            rightArrow.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+        });
+
+        rightArrow.addEventListener('mouseup', () => {
+            rightArrow.style.transform = 'translateY(-2px)';
+            rightArrow.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+        });
+
+        // 添加导航功能
+        leftArrow.addEventListener('click', () => {
+            // 向前移动一天
+            startDate.setDate(startDate.getDate() - 1);
+            endDate.setDate(endDate.getDate() - 1);
+
+            // 更新日期输入框
+            startDateInput.valueAsDate = startDate;
+            endDateInput.valueAsDate = endDate;
+
+            // 重新渲染图表，而不是尝试更新DOM元素
+            // 这样可以确保所有日期显示都是一致的
+            renderGanttChart();
+        });
+
+        rightArrow.addEventListener('click', () => {
+            // 向后移动一天
+            startDate.setDate(startDate.getDate() + 1);
+            endDate.setDate(endDate.getDate() + 1);
+
+            // 更新日期输入框
+            startDateInput.valueAsDate = startDate;
+            endDateInput.valueAsDate = endDate;
+
+            // 重新渲染图表，而不是尝试更新DOM元素
+            // 这样可以确保所有日期显示都是一致的
+            renderGanttChart();
+        });
+
+        // 将导航元素添加到容器
+        navContainer.appendChild(leftArrow);
+        navContainer.appendChild(dateDisplay);
+        navContainer.appendChild(rightArrow);
+
+        // 将导航容器添加到图表内容之前
+        ganttChart.appendChild(navContainer);
+    }
+
     // 根据当前视图渲染时间轴和任务条
     if (currentView === 'day') {
         renderDayView(chartContent);
@@ -322,25 +464,34 @@ function renderDayView(container) {
     timeAxisContainer.className = 'time-axis-container';
     timeAxisContainer.style.display = 'flex';
     timeAxisContainer.style.flexDirection = 'column';
+    timeAxisContainer.style.marginLeft = '180px';
 
-    // 创建日期轴 - 独立的日期轴，用于显示日期
-    const dateAxis = document.createElement('div');
-    dateAxis.className = 'date-axis';
-    dateAxis.style.display = 'flex';
-    dateAxis.style.height = '30px';
-    dateAxis.style.borderBottom = '1px solid rgba(255, 255, 255, 0.2)';
-    dateAxis.style.backgroundColor = 'rgba(35, 38, 45, 0.95)';
-    dateAxis.style.position = 'sticky';
-    dateAxis.style.top = '0';
-    dateAxis.style.zIndex = '11';
-    dateAxis.style.width = '100%';
-
-    // 创建时间轴 - 只显示时间
+    // 创建时间轴 - 只显示时间，不需要日期轴
     const timeAxis = document.createElement('div');
     timeAxis.className = 'time-axis';
     timeAxis.style.display = 'flex';
     timeAxis.style.height = '30px';
     timeAxis.style.width = '100%';
+    timeAxis.style.borderBottom = '1px solid rgba(255, 255, 255, 0.2)';
+    timeAxis.style.backgroundColor = 'rgba(35, 38, 45, 0.95)';
+    timeAxis.style.position = 'sticky';
+    timeAxis.style.top = '0';
+    timeAxis.style.zIndex = '11';
+
+
+    // 获取当前时间，用于当前时间线显示
+    const now = new Date();
+
+    // 固定显示工作时间区间：0:00-23:00
+    const workStartHour = 0;  // 工作开始时间
+    const workEndHour = 23;   // 工作结束时间
+
+    // 设置固定的开始和结束时间
+    const startHour = new Date(startDate);
+    startHour.setHours(workStartHour, 0, 0, 0);
+
+    const endHour = new Date(startDate);
+    endHour.setHours(workEndHour, 0, 0, 0);
 
     // 过滤符合日期范围的任务，排除已删除的任务
     const filteredTasks = allTasks.filter(task => {
@@ -354,222 +505,48 @@ function renderDayView(container) {
             return false;
         }
 
+        // 使用任务的创建日期（只保留年月日部分）
         const taskDate = new Date(task.createdAt);
-        // 扩大过滤范围，包括开始日期前一天和结束日期后一天的任务
-        const extendedStartDate = new Date(startDate);
-        extendedStartDate.setDate(extendedStartDate.getDate() - 1);
-        const extendedEndDate = new Date(endDate);
-        extendedEndDate.setDate(extendedEndDate.getDate() + 1);
-        return taskDate >= extendedStartDate && taskDate <= extendedEndDate;
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+
+        const extendedStartDate = new Date(startHour);
+        extendedStartDate.setDate(extendedStartDate.getDate());
+        extendedStartDate.setHours(0, 0, 0, 0); // 设置为当天的开始
+
+        const extendedEndDate = new Date(endHour);
+        extendedEndDate.setDate(extendedEndDate.getDate());
+        extendedEndDate.setHours(23, 59, 59, 999); // 设置为当天的结束
+
+        return taskDateOnly >= extendedStartDate && taskDateOnly <= extendedEndDate;
     });
 
     // 调试信息：显示日期范围和过滤结果
-    console.log(`日期范围: ${startDate.toLocaleString()} 到 ${endDate.toLocaleString()}`);
     console.log(`过滤后任务数: ${filteredTasks.length}`);
 
-    // 获取当前时间，用于确保当前时间在时间轴范围内
-    const now = new Date();
-    let startHour, endHour;
-
-    // 如果没有任务，显示以当前时间为中心的时间轴
-    if (filteredTasks.length === 0) {
-        // 计算以当前时间为中心的时间区间
-        startHour = new Date(now);
-        startHour.setHours(0, 0, 0, 0); // 设置为今天的00:00
-
-        endHour = new Date(startHour);
-        endHour.setDate(endHour.getDate() + 1); // 设置为明天的00:00
-
-        // 计算总小时数
-        const totalHours = 24; // 一整天的小时数
-
-        // 添加日期标签 - 在日期轴上显示日期
-        const dateCell = document.createElement('div');
-        dateCell.className = 'date-cell';
-        dateCell.style.flex = '1';
-        dateCell.style.width = '100%'; // 日期占满整行
-        dateCell.textContent = `${startHour.getFullYear()}/${startHour.getMonth() + 1}/${startHour.getDate()} (${['日', '一', '二', '三', '四', '五', '六'][startHour.getDay()]})`;
-        dateAxis.appendChild(dateCell);
-
-        // 添加时间标签 - 在时间轴上显示每个小时
-        for (let hour = 0; hour < totalHours; hour++) {
-            const timeCell = document.createElement('div');
-            timeCell.className = 'time-cell';
-            timeCell.textContent = `${hour}:00`;
-            timeAxis.appendChild(timeCell);
-        }
-    } else {
-        // 找出最早的开始时间和最晚的结束时间
-        const earliestStart = new Date(Math.min(...filteredTasks.map(task => task.createdDate.getTime())));
-
-        // 计算最晚的结束时间
-        const latestEnd = new Date(Math.max(...filteredTasks.map(task => {
-            if (task.completed && task.completedDate) {
-                return task.completedDate.getTime();
-            } else {
-                // 未完成任务使用预估结束时间
-                return task.createdDate.getTime() + (task.estimatedDuration || 3600000);
-            }
-        })));
-
-        // 计算任务集中的时间范围
-        let hourDistribution = new Array(24).fill(0);
-
-        // 统计任务在每个小时的分布情况
-        filteredTasks.forEach(task => {
-            const taskHour = task.createdDate.getHours();
-            hourDistribution[taskHour]++;
-        });
-
-        // 找出任务最集中的小时
-        let maxTasksHour = 0;
-        let maxTasksCount = 0;
-
-        hourDistribution.forEach((count, hour) => {
-            if (count > maxTasksCount) {
-                maxTasksCount = count;
-                maxTasksHour = hour;
-            }
-        });
-
-        console.log(`任务最集中的小时: ${maxTasksHour}:00，共有 ${maxTasksCount} 个任务`);
-
-        // 将任务最集中的小时作为中心，向前后延伸4小时，确保显示8小时的区间
-        const centerHour = maxTasksHour;
-
-        // 计算开始小时（向前延伸4小时，但不早于0点）
-        startHour = new Date(earliestStart);
-        startHour.setHours(Math.max(0, centerHour - 4), 0, 0, 0);
-
-        // 计算结束小时（向后延伸4小时，但不晚于24点）
-        endHour = new Date(startHour);
-        endHour.setHours(Math.min(24, centerHour + 4), 0, 0, 0);
-
-        // 确保当前时间在范围内
-        if (now < startHour || now > endHour) {
-            console.log("当前时间不在任务集中区间内，调整时间轴以包含当前时间");
-
-            // 获取当前小时
-            const nowHour = now.getHours();
-
-            // 如果当前时间与中心小时相差超过4小时，则调整视图
-            const hourDiff = Math.abs(nowHour - centerHour);
-
-            if (hourDiff > 4) {
-                if (nowHour < centerHour) {
-                    // 如果当前时间在中心时间之前
-                    startHour = new Date(now);
-                    startHour.setHours(nowHour, 0, 0, 0);
-                    endHour = new Date(startHour);
-                    endHour.setHours(nowHour + 8, 0, 0, 0);
-                } else {
-                    // 如果当前时间在中心时间之后
-                    endHour = new Date(now);
-                    endHour.setHours(nowHour + 1, 0, 0, 0);
-                    startHour = new Date(endHour);
-                    startHour.setHours(nowHour - 7, 0, 0, 0);
-                }
-            }
-        }
-
-        // 至少显示8小时的区间
-        if ((endHour - startHour) < 8 * 3600000) {
-            endHour.setTime(startHour.getTime() + 8 * 3600000);
-        }
-
-        // 计算总小时数
-        const totalHours = Math.ceil((endHour - startHour) / (1000 * 60 * 60));
-
-        // 清空日期单元格数组，用于记录日期变化
-        let dateCells = [];
-
-        // 初始化日期标记，用于跟踪日期变化
-        let currentDate = null;
-        let dateStart = null;
-        let dateCount = 0;
-
-        // 首先构建日期变化信息
-        for (let hour = 0; hour <= totalHours; hour++) {
-            const cellDate = new Date(startHour);
-            cellDate.setHours(cellDate.getHours() + hour);
-
-            // 检查日期是否变化
-            const dateStr = `${cellDate.getFullYear()}/${cellDate.getMonth() + 1}/${cellDate.getDate()} (${['日', '一', '二', '三', '四', '五', '六'][cellDate.getDay()]})`;
-
-            if (!currentDate || dateStr !== currentDate) {
-                // 如果之前有日期，记录它
-                if (currentDate) {
-                    dateCells.push({
-                        date: currentDate,
-                        startIndex: dateStart,
-                        count: dateCount
-                    });
-                }
-
-                // 记录新的日期
-                currentDate = dateStr;
-                dateStart = hour;
-                dateCount = 1;
-            } else {
-                // 增加当前日期的计数
-                dateCount++;
-            }
-        }
-
-        // 添加最后一个日期
-        if (currentDate) {
-            dateCells.push({
-                date: currentDate,
-                startIndex: dateStart,
-                count: dateCount
-            });
-        }
-
-        // 创建日期轴单元格
-        dateCells.forEach(cell => {
-            const dateCell = document.createElement('div');
-            dateCell.className = 'date-cell';
-            dateCell.textContent = cell.date;
-
-            // 计算日期单元格宽度百分比
-            const widthPercent = (cell.count / (totalHours + 1)) * 100;
-            dateCell.style.flex = `0 0 ${widthPercent}%`;
-            dateCell.style.width = `${widthPercent}%`;
-
-            dateAxis.appendChild(dateCell);
-        });
-
-        // 创建时间轴单元格
-        for (let hour = 0; hour <= totalHours; hour++) {
-            const cellDate = new Date(startHour);
-            cellDate.setHours(cellDate.getHours() + hour);
-
-            // 创建时间单元格
-            const timeCell = document.createElement('div');
-            timeCell.className = 'time-cell';
-            timeCell.textContent = `${cellDate.getHours()}:00`;
-            timeAxis.appendChild(timeCell);
-        }
-
-        // 更新任务过滤的起止时间，保持一致性
-        startDateForTasks = startHour;
-        endDateForTasks = endHour;
-
-        // 输出调试信息
-        console.log(`动态时间轴范围: ${startDateForTasks.toLocaleString()} 到 ${endDateForTasks.toLocaleString()}`);
+    // 创建时间轴单元格
+    for (let hour = workStartHour; hour <= workEndHour; hour++) {
+        const timeCell = document.createElement('div');
+        timeCell.className = 'time-cell';
+        timeCell.textContent = `${hour}:00`;
+        timeCell.style.maxWidth = '29.7px';
+        timeCell.style.minWidth = '0px';
+        timeAxis.appendChild(timeCell);
     }
 
-    // 将日期轴和时间轴添加到容器
-    timeAxisContainer.appendChild(dateAxis);
+    // 将时间轴添加到容器
     timeAxisContainer.appendChild(timeAxis);
     container.appendChild(timeAxisContainer);
+
+    // 更新任务过滤的起止时间，保持一致性
+    startDateForTasks = startHour;
+    endDateForTasks = endHour;
 
     // 按创建日期排序
     filteredTasks.sort((a, b) => a.createdDate - b.createdDate);
 
     // 使用动态计算的时间范围
-    const timeStart = startDateForTasks || startDate;
-    const totalDuration = endDateForTasks ? (endDateForTasks - timeStart) : ((endDate - startDate) + 24 * 3600000);
+    const timeStart = startDate;
+    const totalDuration = new Date(hour = 24);
 
     // 调用调试函数
     debugTaskRendering(filteredTasks, timeStart, totalDuration);
@@ -701,33 +678,9 @@ function renderDayView(container) {
         // 计算在时间轴上的位置（毫秒精度）
         let startOffset, endOffset;
 
-        if (currentView === 'week') {
-            // 对于周视角，保证起始位置正确（按天对齐），但长度使用真实时间
-            const startDay = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
-            const timeStartDay = new Date(timeStart.getFullYear(), timeStart.getMonth(), timeStart.getDate());
-
-            // 计算起始日期偏移量（确保任务显示在正确的日期栏）
-            startOffset = Math.max(0, startDay - timeStartDay);
-
-            // 计算任务实际持续时间
-            const taskDuration = endTime - startTime;
-
-            // 设置最小持续时间为30分钟，避免任务条过窄
-            const minDuration = 30 * 60 * 1000; // 30分钟
-            const effectiveDuration = Math.max(taskDuration, minDuration);
-
-            // 使用实际持续时间计算结束偏移量
-            endOffset = startOffset + effectiveDuration;
-
-            // 调试信息
-            console.log(`周视角 - 任务: ${task.title}`);
-            console.log(`  实际持续时间: ${taskDuration / (1000 * 60 * 60)}小时`);
-            console.log(`  有效持续时间: ${effectiveDuration / (1000 * 60 * 60)}小时`);
-        } else {
-            // 日视角保持原来精确到小时的计算
-            startOffset = Math.max(0, startTime - timeStart);
-            endOffset = Math.max(startOffset + 60000, endTime - timeStart); // 确保至少有1分钟的宽度
-        }
+        // 日视角保持原来精确到小时的计算
+        startOffset = Math.max(0, startTime - startDate);
+        endOffset = Math.max(startOffset + 60000, endTime - startDate); // 确保至少有1分钟的宽度
 
         // 调试这个特定任务的位置
         console.log(`任务: ${task.title}`);
@@ -743,70 +696,64 @@ function renderDayView(container) {
         console.log(`  位置百分比: left=${leftPercent.toFixed(2)}%, width=${widthPercent.toFixed(2)}%`);
 
         // 对于日视图，再次校正任务位置，确保与时间轴对齐
-        if (currentView === 'day') {
-            // 首先检查任务日期是否在当前显示的日期范围内
-            const taskDate = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
-            const timeStartDate = new Date(timeStart.getFullYear(), timeStart.getMonth(), timeStart.getDate());
+        // 首先检查任务日期是否在当前显示的日期范围内
+        const taskDate = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
+        console.log(`taskDate: ${startTime}`);
+        console.log(`taskDate: ${startTime.getHours()}`);
+        const timeStartDate = new Date(timeStart.getFullYear(), timeStart.getMonth(), timeStart.getDate());
 
-            // 计算任务日期与时间轴起始日期的差异（天数）
-            const daysDiff = Math.floor((taskDate - timeStartDate) / (24 * 3600 * 1000));
+        // 计算任务日期与时间轴起始日期的差异（天数）
+        const daysDiff = Math.floor((taskDate - timeStartDate) / (24 * 3600 * 1000));
 
-            // 如果任务不在当前显示的时间范围内，则不显示任务
-            if (daysDiff < 0 || daysDiff > Math.ceil(totalDuration / (24 * 3600 * 1000))) {
-                console.log(`任务超出显示范围: ${task.title}, 日期差: ${daysDiff}天`);
-                taskBar.style.display = 'none';
-            } else {
-                // 获取任务开始时间的小时和分钟部分
-                const taskStartHour = startTime.getHours();
-                const taskStartMinutes = startTime.getMinutes();
-
-                // 计算时间轴开始时间的小时部分
-                const timeStartHour = timeStart.getHours();
-
-                // 计算当天内从时间轴开始到任务开始的小时数（包括小数部分表示分钟）
-                const hourDiff = (taskStartHour - timeStartHour) + (taskStartMinutes / 60);
-
-                // 获取时间轴总小时数
-                const totalHours = totalDuration / (1000 * 60 * 60);
-
-                // 计算任务持续时间（小时）
-                const taskDurationHours = (endTime - startTime) / (1000 * 60 * 60);
-
-                // 计算当天时间轴的占比
-                const singleDayHours = 24; // 假设每天显示24小时
-                const singleDayPercent = (singleDayHours / totalHours) * 100;
-
-                // 计算任务在当天内的开始位置百分比
-                const hourPercent = (hourDiff / singleDayHours) * singleDayPercent;
-
-                // 计算基于当天的位置百分比（考虑日期偏移）
-                const correctedLeftPercent = (daysDiff * singleDayPercent) + hourPercent;
-
-                // 计算任务宽度百分比（但不超过当天结束）
-                const maxWidthPercent = singleDayPercent - hourPercent; // 当天剩余宽度
-                const correctedWidthPercent = Math.min(maxWidthPercent, (taskDurationHours / totalHours) * 100);
-
-                // 记录修正后的位置
-                console.log(`  修正后位置: left=${correctedLeftPercent.toFixed(2)}%, width=${correctedWidthPercent.toFixed(2)}%`);
-                console.log(`  天数差: ${daysDiff}, 当天小时差: ${hourDiff}, 当天占比: ${singleDayPercent.toFixed(2)}%`);
-
-                // 使用修正后的值
-                taskBar.style.left = `${correctedLeftPercent}%`;
-                taskBar.style.width = `${correctedWidthPercent}%`;
-
-                // 更新数据集属性
-                taskBar.dataset.left = correctedLeftPercent.toFixed(2);
-                taskBar.dataset.width = correctedWidthPercent.toFixed(2);
-            }
+        // 如果任务不在当前显示的时间范围内，则不显示任务
+        if (daysDiff < 0 || daysDiff > Math.ceil(totalDuration / (24 * 3600 * 1000))) {
+            console.log(`任务超出显示范围: ${task.title}, 日期差: ${daysDiff}天`);
+            taskBar.style.display = 'none';
         } else {
-            // 周视图使用原来的计算方式
-            taskBar.style.left = `${leftPercent}%`;
-            taskBar.style.width = `${widthPercent}%`;
+            // 获取任务开始时间的小时和分钟部分
+            const taskStartHour = startTime.getHours();
+            const taskStartMinutes = startTime.getMinutes();
 
-            // 记录关键位置和宽度到自定义属性（便于调试）
-            taskBar.dataset.left = leftPercent.toFixed(2);
-            taskBar.dataset.width = widthPercent.toFixed(2);
+            // 计算时间轴开始时间的小时部分
+            const timeStartHour = timeStart.getHours();
+
+            // 计算当天内从时间轴开始到任务开始的小时数（包括小数部分表示分钟）
+            const hourDiff = (taskStartHour - timeStartHour) + (taskStartMinutes / 60);
+            console.log(`hourDiff: ${hourDiff}`);
+
+            // 获取时间轴总小时数 - 使用实际工作时间区间（例如8:00-19:00）
+            const totalHours = workEndHour - workStartHour;
+
+            // 计算任务持续时间（小时）
+            const taskDurationHours = (endTime - startTime) / (1000 * 60 * 60);
+
+            // 计算当天时间轴的占比 - 使用实际显示的小时数
+            const singleDayHours = totalHours; // 实际显示的小时数
+            const singleDayPercent = 100; // 当前视图时间轴占100%
+
+            // 计算任务在当天内的开始位置百分比
+            const hourPercent = (hourDiff / singleDayHours) * 100;
+
+            // 计算基于当天的位置百分比
+            const correctedLeftPercent = hourPercent;
+
+            // 计算任务宽度百分比（但不超过当天结束）
+            const maxWidthPercent = 100 - hourPercent; // 当天剩余宽度
+            const correctedWidthPercent = Math.min(maxWidthPercent, (taskDurationHours / singleDayHours) * 100);
+
+            // 记录修正后的位置
+            console.log(`  修正后位置: left=${correctedLeftPercent.toFixed(2)}%, width=${correctedWidthPercent.toFixed(2)}%`);
+            console.log(`  天数差: ${daysDiff}, 当天小时差: ${hourDiff}, 当天占比: ${singleDayPercent.toFixed(2)}%`);
+
+            // 使用修正后的值
+            taskBar.style.left = `${correctedLeftPercent}%`;
+            taskBar.style.width = `${correctedWidthPercent}%`;
+
+            // 更新数据集属性
+            taskBar.dataset.left = correctedLeftPercent.toFixed(2);
+            taskBar.dataset.width = correctedWidthPercent.toFixed(2);
         }
+
 
         // 存储任务信息用于悬停提示
         taskBar.dataset.title = task.title;
@@ -859,13 +806,20 @@ function renderWeekView(container) {
             return false;
         }
 
+        // 使用任务的创建日期（只保留年月日部分）
         const taskDate = new Date(task.createdAt);
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+
         // 扩大过滤范围，包括开始日期前一天和结束日期后一天的任务
         const extendedStartDate = new Date(startDate);
         extendedStartDate.setDate(extendedStartDate.getDate() - 1);
+        extendedStartDate.setHours(0, 0, 0, 0); // 设置为当天的开始
+
         const extendedEndDate = new Date(endDate);
         extendedEndDate.setDate(extendedEndDate.getDate() + 1);
-        return taskDate >= extendedStartDate && taskDate <= extendedEndDate;
+        extendedEndDate.setHours(23, 59, 59, 999); // 设置为当天的结束
+
+        return taskDateOnly >= extendedStartDate && taskDateOnly <= extendedEndDate;
     });
 
     // 调试信息：显示日期范围和过滤结果
@@ -1244,25 +1198,25 @@ function renderWeekView(container) {
                 // 计算当天内从时间轴开始到任务开始的小时数（包括小数部分表示分钟）
                 const hourDiff = (taskStartHour - timeStartHour) + (taskStartMinutes / 60);
 
-                // 获取时间轴总小时数
-                const totalHours = totalDuration / (1000 * 60 * 60);
+                // 获取时间轴总小时数 - 使用实际工作时间区间（例如8:00-19:00）
+                const totalHours = workEndHour - workStartHour;
 
                 // 计算任务持续时间（小时）
                 const taskDurationHours = (endTime - startTime) / (1000 * 60 * 60);
 
-                // 计算当天时间轴的占比
-                const singleDayHours = 24; // 假设每天显示24小时
-                const singleDayPercent = (singleDayHours / totalHours) * 100;
+                // 计算当天时间轴的占比 - 使用实际显示的小时数
+                const singleDayHours = totalHours; // 实际显示的小时数
+                const singleDayPercent = 100; // 当前视图时间轴占100%
 
                 // 计算任务在当天内的开始位置百分比
-                const hourPercent = (hourDiff / singleDayHours) * singleDayPercent;
+                const hourPercent = (hourDiff / singleDayHours) * 100;
 
-                // 计算基于当天的位置百分比（考虑日期偏移）
-                const correctedLeftPercent = (daysDiff * singleDayPercent) + hourPercent;
+                // 计算基于当天的位置百分比
+                const correctedLeftPercent = hourPercent;
 
                 // 计算任务宽度百分比（但不超过当天结束）
-                const maxWidthPercent = singleDayPercent - hourPercent; // 当天剩余宽度
-                const correctedWidthPercent = Math.min(maxWidthPercent, (taskDurationHours / totalHours) * 100);
+                const maxWidthPercent = 100 - hourPercent; // 当天剩余宽度
+                const correctedWidthPercent = Math.min(maxWidthPercent, (taskDurationHours / singleDayHours) * 100);
 
                 // 记录修正后的位置
                 console.log(`  修正后位置: left=${correctedLeftPercent.toFixed(2)}%, width=${correctedWidthPercent.toFixed(2)}%`);
