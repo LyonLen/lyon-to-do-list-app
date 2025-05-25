@@ -252,6 +252,8 @@
             width: 100%;
             min-width: 100%;
             flex: 1;
+            margin-top: 15px;
+            /* 添加上边距，避免与时间轴重叠 */
         }
 
         .gantt-row {
@@ -436,24 +438,31 @@
             background-color: rgba(255, 82, 82, 0.8);
             z-index: 10;
             pointer-events: none;
+            height: 100%;
         }
 
         /* 当前时间标记样式 */
         .current-time-marker {
             position: absolute;
-            top: 0;
+            top: 30px;
+            /* 确保在时间轴下方开始 */
             width: 10px;
-            height: 30px;
+            height: 10px;
+            /* 减小高度 */
             background-color: rgba(255, 82, 82, 0.8);
             z-index: 10;
-            border-radius: 0 0 5px 5px;
+            border-radius: 50%;
+            /* 改为圆形 */
             pointer-events: none;
+            transform: translateX(-4px) !important;
+            /* 调整居中位置 */
         }
 
         /* 当前时间文字标签 */
         .current-time-label {
             position: absolute;
-            top: 33px;
+            top: 45px;
+            /* 调整位置在标记下方 */
             background-color: rgba(255, 82, 82, 0.9);
             color: white;
             font-size: 11px;

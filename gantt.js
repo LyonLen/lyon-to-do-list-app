@@ -436,18 +436,50 @@ function addCurrentTimeLine(container) {
     // 创建当前时间线
     const timeLine = document.createElement('div');
     timeLine.className = 'current-time-line';
-    timeLine.style.left = `${positionPercent}%`;
+
+    // 修正：给时间线添加固定的左边距，与任务区域对齐
+    if (currentView === 'week') {
+        // 周视角时，计算当前日期在周内的位置
+        const weekStart = startDateForTasks;
+        const weekDay = now.getDay(); // 0-6，代表周日到周六
+
+        // 计算当天占一周的比例
+        const dayPercent = (weekDay * 100 / 7);
+
+        // 计算当前时间在当天内的位置百分比
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const dayOffset = now - startOfDay;
+        const dayDuration = 24 * 60 * 60 * 1000; // 一天的总毫秒数
+        const timePercent = (dayOffset * 100 / dayDuration);
+
+        // 每天占一周的1/7，所以当天内的位置需要按比例缩放
+        const dayWidth = 100 / 7; // 一天占整个周的百分比
+        const finalPosition = dayPercent + (timePercent * dayWidth / 100);
+
+        console.log(`周视角时间线: 周内日期=${weekDay}, 日内偏移=${timePercent.toFixed(2)}%, 最终位置=${finalPosition.toFixed(2)}%`);
+
+        // 设置时间线位置
+        timeLine.style.left = `${finalPosition}%`;
+        timeLine.style.marginLeft = '180px'; // 补偿任务标签的宽度
+    } else {
+        // 日视角使用原来的计算方法
+        timeLine.style.left = `${positionPercent}%`;
+        timeLine.style.marginLeft = '180px'; // 补偿任务标签的宽度
+    }
 
     // 创建当前时间标记
     const timeMarker = document.createElement('div');
     timeMarker.className = 'current-time-marker';
-    timeMarker.style.left = `${positionPercent}%`;
+    timeMarker.style.left = timeLine.style.left;
+    timeMarker.style.marginLeft = timeLine.style.marginLeft;
     timeMarker.style.transform = 'translateX(-50%)';
 
     // 添加当前时间文字标记
     const timeLabel = document.createElement('div');
     timeLabel.className = 'current-time-label';
-    timeLabel.style.left = `${positionPercent}%`;
+    timeLabel.style.left = timeLine.style.left;
+    timeLabel.style.marginLeft = timeLine.style.marginLeft;
     timeLabel.style.transform = 'translateX(-50%)';
     timeLabel.textContent = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
 
@@ -465,6 +497,11 @@ function renderDayView(container) {
     timeAxisContainer.style.display = 'flex';
     timeAxisContainer.style.flexDirection = 'column';
     timeAxisContainer.style.marginLeft = '180px';
+    timeAxisContainer.style.position = 'sticky';
+    timeAxisContainer.style.top = '0';
+    timeAxisContainer.style.zIndex = '11';
+    timeAxisContainer.style.backgroundColor = 'rgba(35, 38, 45, 0.95)';
+    timeAxisContainer.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
 
     // 创建时间轴 - 只显示时间，不需要日期轴
     const timeAxis = document.createElement('div');
@@ -473,11 +510,6 @@ function renderDayView(container) {
     timeAxis.style.height = '30px';
     timeAxis.style.width = '100%';
     timeAxis.style.borderBottom = '1px solid rgba(255, 255, 255, 0.2)';
-    timeAxis.style.backgroundColor = 'rgba(35, 38, 45, 0.95)';
-    timeAxis.style.position = 'sticky';
-    timeAxis.style.top = '0';
-    timeAxis.style.zIndex = '11';
-
 
     // 获取当前时间，用于当前时间线显示
     const now = new Date();
@@ -533,7 +565,7 @@ function renderDayView(container) {
         timeAxis.appendChild(timeCell);
     }
 
-    // 将时间轴添加到容器
+    // 将时间轴添加到时间轴容器
     timeAxisContainer.appendChild(timeAxis);
     container.appendChild(timeAxisContainer);
 
@@ -554,6 +586,7 @@ function renderDayView(container) {
     // 创建任务行和任务条区域容器
     const taskContainer = document.createElement('div');
     taskContainer.className = 'task-container';
+    taskContainer.style.marginTop = '10px';
 
     // 创建任务行
     filteredTasks.forEach(task => {
@@ -754,7 +787,6 @@ function renderDayView(container) {
             taskBar.dataset.width = correctedWidthPercent.toFixed(2);
         }
 
-
         // 存储任务信息用于悬停提示
         taskBar.dataset.title = task.title;
         taskBar.dataset.start = startTime.toLocaleString();
@@ -790,10 +822,21 @@ function renderDayView(container) {
 
 // 渲染周视角
 function renderWeekView(container) {
+    // 创建时间轴容器
+    const timeAxisContainer = document.createElement('div');
+    timeAxisContainer.className = 'time-axis-container';
+    timeAxisContainer.style.display = 'flex';
+    timeAxisContainer.style.flexDirection = 'column';
+    timeAxisContainer.style.marginLeft = '180px';
+    timeAxisContainer.style.position = 'sticky';
+    timeAxisContainer.style.top = '0';
+    timeAxisContainer.style.zIndex = '11';
+    timeAxisContainer.style.backgroundColor = 'rgba(35, 38, 45, 0.95)';
+    timeAxisContainer.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+
     // 创建时间轴
     const timeAxis = document.createElement('div');
     timeAxis.className = 'time-axis';
-    timeAxis.style.marginLeft = '180px';
 
     // 过滤符合日期范围的任务，排除已删除的任务
     const filteredTasks = allTasks.filter(task => {
@@ -840,6 +883,10 @@ function renderWeekView(container) {
     latestEnd = new Date(earliestStart);
     latestEnd.setDate(latestEnd.getDate() + 7); // 显示一周
 
+    // 更新全局时间轴变量，用于正确显示当前时间线
+    startDateForTasks = earliestStart;
+    endDateForTasks = latestEnd;
+
     // 创建日期标签
     for (let day = 0; day < 7; day++) {
         const cellDate = new Date(earliestStart);
@@ -857,11 +904,14 @@ function renderWeekView(container) {
         timeAxis.appendChild(timeCell);
     }
 
-    container.appendChild(timeAxis);
+    // 将时间轴添加到时间轴容器
+    timeAxisContainer.appendChild(timeAxis);
+
+    // 将时间轴容器添加到主容器
+    container.appendChild(timeAxisContainer);
 
     // 按创建日期排序
     filteredTasks.sort((a, b) => a.createdDate - b.createdDate);
-
 
     const nowDate = new Date();
     const weekStartDate = new Date(year = nowDate.getFullYear(), month = nowDate.getMonth(), date = nowDate.getDate(), day = 0);
@@ -873,6 +923,7 @@ function renderWeekView(container) {
     // 创建任务行和任务条区域容器
     const taskContainer = document.createElement('div');
     taskContainer.className = 'task-container';
+    taskContainer.style.marginTop = '10px';
 
     // 创建任务行
     filteredTasks.forEach(task => {
@@ -994,110 +1045,55 @@ function renderWeekView(container) {
             endTime = maxEndDate;
         }
 
-        // 计算在时间轴上的位置（毫秒精度）
-        let startOffset, endOffset;
-
-        // 对于周视角，保证起始位置正确（按天对齐），但长度使用真实时间
+        // 用于周视角的任务位置计算
+        // 对于周视角，计算任务在周内的准确位置
         const startDay = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
         const timeStartDay = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
 
-        // 计算起始日期偏移量（确保任务显示在正确的日期栏）
-        startOffset = Math.max(0, startDay - timeStartDay);
+        // 计算当前任务所在周的第几天（0-6）
+        const dayIndex = Math.floor((startDay - timeStartDay) / (24 * 60 * 60 * 1000));
 
-        // 计算任务实际持续时间
-        const taskDuration = endTime - startTime;
+        // 一天在整周中的宽度百分比
+        const dayWidth = 100 / 7; // 7天
 
-        // 设置最小持续时间为30分钟，避免任务条过窄
-        const minDuration = 30 * 60 * 1000; // 30分钟
-        const effectiveDuration = Math.max(taskDuration, minDuration);
+        // 计算任务在当天内的起始位置（小时百分比）
+        const dayStartTime = new Date(startDay);
+        dayStartTime.setHours(0, 0, 0, 0);
+        const hourOffset = (startTime - dayStartTime) / (24 * 60 * 60 * 1000); // 占一天的比例
 
-        // 使用实际持续时间计算结束偏移量
-        endOffset = startOffset + effectiveDuration;
+        // 计算任务持续时间（小时）
+        const taskDurationHours = (endTime - startTime) / (60 * 60 * 1000);
 
-        // 调试信息
-        console.log(`周视角 - 任务: ${task.title}`);
-        console.log(`  实际持续时间: ${taskDuration / (1000 * 60 * 60)}小时`);
-        console.log(`  有效持续时间: ${effectiveDuration / (1000 * 60 * 60)}小时`);
+        // 计算任务持续时间占一天的比例
+        const durationDayRatio = taskDurationHours / 24;
 
-        // 调试这个特定任务的位置
-        console.log(`任务: ${task.title}`);
-        console.log(`  任务开始时间: ${startTime.toLocaleString()}`);
-        console.log(`  时间轴开始: ${timeStart.toLocaleString()}`);
-        console.log(`  开始偏移: ${startOffset}ms (${startOffset / (1000 * 60 * 60)}小时)`);
+        // 计算左侧位置：dayIndex*dayWidth 是任务所在日期的起始位置
+        // hourOffset*dayWidth 是任务在当天内的偏移量
+        const leftPercent = (dayIndex * dayWidth) + (hourOffset * dayWidth);
 
-        const totalDuration = weekEndDate - weekStartDate;
+        // 计算宽度：任务持续时间占一天的比例，再乘以每天的宽度
+        // 但不超过当天结束位置
+        const remainingDayWidth = dayWidth - (hourOffset * dayWidth); // 当天剩余宽度
+        const widthPercent = Math.min(remainingDayWidth, durationDayRatio * dayWidth);
 
-        // 设置任务条位置和宽度，确保最小宽度为10px
-        const leftPercent = (startOffset * 100 / totalDuration);
-        const widthPercent = Math.max(1.0, ((endOffset - startOffset) * 100 / totalDuration));
+        // 确保最小宽度
+        const minWidthPercent = 0.5; // 最小宽度百分比
+        const finalWidthPercent = Math.max(minWidthPercent, widthPercent);
 
-        console.log(`  位置百分比: left=${leftPercent.toFixed(2)}%, width=${widthPercent.toFixed(2)}%`);
+        console.log(`周视角任务位置计算 - ${task.title}:`);
+        console.log(`  所在日期: 周内第${dayIndex}天`);
+        console.log(`  日内开始时间比例: ${hourOffset.toFixed(4)}`);
+        console.log(`  持续时间: ${taskDurationHours.toFixed(2)}小时`);
+        console.log(`  左侧位置: ${leftPercent.toFixed(2)}%`);
+        console.log(`  宽度: ${finalWidthPercent.toFixed(2)}%`);
 
-        // 对于日视图，再次校正任务位置，确保与时间轴对齐
-        if (currentView === 'day') {
-            // 首先检查任务日期是否在当前显示的日期范围内
-            const taskDate = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
-            const timeStartDate = new Date(timeStart.getFullYear(), timeStart.getMonth(), timeStart.getDate());
+        // 设置任务条位置和宽度
+        taskBar.style.left = `${leftPercent}%`;
+        taskBar.style.width = `${finalWidthPercent}%`;
 
-            // 计算任务日期与时间轴起始日期的差异（天数）
-            const daysDiff = Math.floor((taskDate - timeStartDate) / (24 * 3600 * 1000));
-
-            // 如果任务不在当前显示的时间范围内，则不显示任务
-            if (daysDiff < 0 || daysDiff > Math.ceil(totalDuration / (24 * 3600 * 1000))) {
-                console.log(`任务超出显示范围: ${task.title}, 日期差: ${daysDiff}天`);
-                taskBar.style.display = 'none';
-            } else {
-                // 获取任务开始时间的小时和分钟部分
-                const taskStartHour = startTime.getHours();
-                const taskStartMinutes = startTime.getMinutes();
-
-                // 计算时间轴开始时间的小时部分
-                const timeStartHour = timeStart.getHours();
-
-                // 计算当天内从时间轴开始到任务开始的小时数（包括小数部分表示分钟）
-                const hourDiff = (taskStartHour - timeStartHour) + (taskStartMinutes / 60);
-
-                // 获取时间轴总小时数 - 使用实际工作时间区间（例如8:00-19:00）
-                const totalHours = workEndHour - workStartHour;
-
-                // 计算任务持续时间（小时）
-                const taskDurationHours = (endTime - startTime) / (1000 * 60 * 60);
-
-                // 计算当天时间轴的占比 - 使用实际显示的小时数
-                const singleDayHours = totalHours; // 实际显示的小时数
-                const singleDayPercent = 100; // 当前视图时间轴占100%
-
-                // 计算任务在当天内的开始位置百分比
-                const hourPercent = (hourDiff / singleDayHours) * 100;
-
-                // 计算基于当天的位置百分比
-                const correctedLeftPercent = hourPercent;
-
-                // 计算任务宽度百分比（但不超过当天结束）
-                const maxWidthPercent = 100 - hourPercent; // 当天剩余宽度
-                const correctedWidthPercent = Math.min(maxWidthPercent, (taskDurationHours / singleDayHours) * 100);
-
-                // 记录修正后的位置
-                console.log(`  修正后位置: left=${correctedLeftPercent.toFixed(2)}%, width=${correctedWidthPercent.toFixed(2)}%`);
-                console.log(`  天数差: ${daysDiff}, 当天小时差: ${hourDiff}, 当天占比: ${singleDayPercent.toFixed(2)}%`);
-
-                // 使用修正后的值
-                taskBar.style.left = `${correctedLeftPercent}%`;
-                taskBar.style.width = `${correctedWidthPercent}%`;
-
-                // 更新数据集属性
-                taskBar.dataset.left = correctedLeftPercent.toFixed(2);
-                taskBar.dataset.width = correctedWidthPercent.toFixed(2);
-            }
-        } else {
-            // 周视图使用原来的计算方式
-            taskBar.style.left = `${leftPercent}%`;
-            taskBar.style.width = `${widthPercent}%`;
-
-            // 记录关键位置和宽度到自定义属性（便于调试）
-            taskBar.dataset.left = leftPercent.toFixed(2);
-            taskBar.dataset.width = widthPercent.toFixed(2);
-        }
+        // 记录关键位置和宽度到自定义属性（便于调试）
+        taskBar.dataset.left = leftPercent.toFixed(2);
+        taskBar.dataset.width = finalWidthPercent.toFixed(2);
 
         // 存储任务信息用于悬停提示
         taskBar.dataset.title = task.title;
